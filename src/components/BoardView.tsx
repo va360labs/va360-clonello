@@ -28,6 +28,7 @@ import { AddColumnForm } from './AddColumnForm';
 import { CardFace } from './CardTile';
 import { CardModal } from './CardModal';
 import { ColumnPreview, ColumnView } from './ColumnView';
+import { ImportCardsButton, ImportNotice, type ImportResult } from './ImportCards';
 import './BoardView.css';
 
 type DragKind = 'card' | 'column';
@@ -38,6 +39,7 @@ const kindOf = (item: Active | Over | null): DragKind | undefined =>
 export function BoardView() {
   const { board, dispatch } = useBoard();
   const [openCardId, setOpenCardId] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [active, setActive] = useState<{ id: string; kind: DragKind } | null>(null);
 
   // Tablero tal y como estaba al empezar a arrastrar: se restaura si se cancela.
@@ -173,7 +175,9 @@ export function BoardView() {
         <h1 id="board-title" className="board__title">
           {board.title}
         </h1>
+        <ImportCardsButton onResult={setImportResult} />
       </div>
+      {importResult && <ImportNotice result={importResult} onClose={() => setImportResult(null)} />}
 
       <DndContext
         sensors={sensors}

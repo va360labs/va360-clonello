@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { importCards } from './actions';
 import { boardReducer, findColumnOfCard } from './reducer';
+import { SCHEMA_VERSION, validateStoredData } from './schema';
 import type { Board } from './types';
 
 /** Tablero pequeño y predecible para las pruebas. */
@@ -169,6 +171,117 @@ describe('etiquetas', () => {
     const board = makeBoard();
     expect(boardReducer(board, { type: 'label/add', id: 'l-n', name: ' ', color: 'gris' })).toBe(board);
     expect(boardReducer(board, { type: 'label/add', id: 'l-n', name: 'diseño', color: 'gris' })).toBe(board);
+  });
+});
+
+describe('importar tarjetas', () => {
+  const card = (id: string, title: string, column = '', description = '') => ({ id, title, description, column });
+
+  it('cards/import añade las tarjetas al final de su columna en el orden del archivo', () => {
+    const next = boardReducer(makeBoard(), {
+      type: 'cards/import',
+      defaultColumnId: 'c-a',
+      cards: [
+        card('n-1', ' Cinco ', 'En curso', 'Con detalle'),
+        card('n-2', 'Seis', 'hecho'),
+        card('n-3', 'Siete', 'EN CURSO'),
+        card('n-4', 'Ocho', 'Por hacer'),
+      ],
+    });
+    expect(cardIdsOf(next, 'c-a')).toEqual(['k-1', 'k-2', 'k-3', 'n-4']);
+    expect(cardIdsOf(next, 'c-b')).toEqual(['k-4', 'n-1', 'n-3']);
+    expect(cardIdsOf(next, 'c-c')).toEqual(['n-2']);
+    expect(next.cards['n-1']).toEqual({ id: 'n-1', title: 'Cinco', description: 'Con detalle', labelIds: [] });
+    expect(next.cards['n-2']).toEqual({ id: 'n-2', title: 'Seis', description: '', labelIds: [] });
+    expect(Object.keys(next.cards)).toHaveLength(8);
+  });
+
+  it('cards/import manda a la columna elegida las filas sin columna o con una columna que no existe', () => {
+    const next = boardReducer(makeBoard(), {
+      type: 'cards/import',
+      defaultColumnId: 'c-b',
+      cards: [card('n-1', 'Sin columna'), card('n-2', 'Columna rara', 'Revisión'), card('n-3', 'Con tilde', 'Hécho')],
+    });
+    expect(cardIdsOf(next, 'c-b')).toEqual(['k-4', 'n-1', 'n-2']);
+    // Los nombres de columna tampoco distinguen mayúsculas ni tildes.
+    expect(cardIdsOf(next, 'c-c')).toEqual(['n-3']);
+    expect(next.columns.map((c) => c.id)).toEqual(['c-a', 'c-b', 'c-c']);
+  });
+
+  it('cards/import no toca las tarjetas que ya había', () => {
+    const board = makeBoard();
+    const next = boardReducer(board, {
+      type: 'cards/import',
+      defaultColumnId: 'c-a',
+      cards: [card('n-1', 'Uno'), card('n-2', 'Nueva', 'En curso')],
+    });
+    for (const [id, existing] of Object.entries(board.cards)) expect(next.cards[id]).toBe(existing);
+    expect(next.columns.map((c) => c.cardIds.filter((id) => board.cards[id]))).toEqual(
+      board.columns.map((c) => c.cardIds),
+    );
+    expect(next.labels).toBe(board.labels);
+    // Un título repetido no se salta: se crea otra tarjeta.
+    expect(next.cards['n-1']?.title).toBe('Uno');
+  });
+
+  it('cards/import se salta las tarjetas sin título', () => {
+    const next = boardReducer(makeBoard(), {
+      type: 'cards/import',
+      defaultColumnId: 'c-c',
+      cards: [card('n-1', '   '), card('n-2', 'Vale')],
+    });
+    expect(cardIdsOf(next, 'c-c')).toEqual(['n-2']);
+    expect(next.cards['n-1']).toBeUndefined();
+  });
+
+  it('cards/import sin tarjetas válidas devuelve el mismo tablero', () => {
+    const board = makeBoard();
+    expect(boardReducer(board, { type: 'cards/import', defaultColumnId: 'c-a', cards: [] })).toBe(board);
+    expect(boardReducer(board, { type: 'cards/import', defaultColumnId: 'c-a', cards: [card('n-1', ' ')] })).toBe(
+      board,
+    );
+    expect(
+      boardReducer(board, { type: 'cards/import', defaultColumnId: 'c-a', cards: [card('k-1', 'Repetido')] }),
+    ).toBe(board);
+    expect(
+      boardReducer(board, {
+        type: 'cards/import',
+        defaultColumnId: 'c-a',
+        cards: [card('n-1', 'Uno'), card('n-1', 'Otra vez')],
+      }),
+    ).toBe(board);
+    expect(boardReducer(board, { type: 'cards/import', defaultColumnId: 'nada', cards: [card('n-1', 'Uno')] })).toBe(
+      board,
+    );
+  });
+
+  it('el tablero resultante pasa la validación del esquema', () => {
+    const next = boardReducer(
+      makeBoard(),
+      importCards(
+        [
+          { title: 'Uno', description: 'Línea 1\nLínea 2', column: 'Hecho' },
+          { title: 'Dos', description: '', column: '' },
+        ],
+        'c-a',
+      ),
+    );
+    expect(Object.keys(next.cards)).toHaveLength(6);
+    expect(validateStoredData({ version: SCHEMA_VERSION, board: next })).toMatchObject({ ok: true });
+  });
+
+  it('importCards crea un id nuevo para cada tarjeta', () => {
+    const action = importCards(
+      [
+        { title: 'Uno', description: '', column: '' },
+        { title: 'Dos', description: '', column: '' },
+      ],
+      'c-a',
+    );
+    if (action.type !== 'cards/import') throw new Error('acción inesperada');
+    const ids = action.cards.map((c) => c.id);
+    expect(new Set(ids).size).toBe(2);
+    for (const id of ids) expect(id).toMatch(/^card-/);
   });
 });
 

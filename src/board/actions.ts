@@ -1,4 +1,5 @@
 import { createId } from './ids';
+import type { CsvCardRow } from './csv';
 import type { BoardAction } from './reducer';
 import type { LabelColor } from './types';
 
@@ -24,4 +25,14 @@ export const addLabel = (name: string, color: LabelColor): BoardAction => ({
   id: createId('label'),
   name,
   color,
+});
+
+/** Tarjetas leídas de un CSV, cada una con su id nuevo. Ver `cards/import`. */
+export const importCards = (
+  rows: readonly Pick<CsvCardRow, 'title' | 'description' | 'column'>[],
+  defaultColumnId: string,
+): BoardAction => ({
+  type: 'cards/import',
+  defaultColumnId,
+  cards: rows.map(({ title, description, column }) => ({ id: createId('card'), title, description, column })),
 });

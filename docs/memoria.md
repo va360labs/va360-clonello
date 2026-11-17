@@ -123,9 +123,19 @@ Una preferencia visual se aplica antes del primer pintado (un script corto en `i
 - La cabecera sigue navy en los dos temas; en oscuro se separa del fondo con un filete (`--header-line`). El dorado sigue igual y sobre él el texto sigue siendo navy. `<meta name="theme-color">` no cambia: la cabecera es navy en ambos.
 - Los colores sueltos que quedaban en los `.css` pasaron a tokens (`--text-on-danger`, `--text-on-label`, `--backdrop`, `--header-divider`, `--line-bold`). Las etiquetas tiñen su fondo mezclando su color con `--surface` (`--label-tint`, más intenso en oscuro); sus tonos (`LABEL_HEX`) no cambian porque son datos y se leen bien sobre los dos fondos.
 
+## Importar tarjetas desde un CSV
+
+Botón «Importar tarjetas» junto al título del tablero: se elige un CSV y cada fila con título se convierte en una tarjeta nueva, sin tocar las que ya había. Encargo #15.
+
+- **Formato**: primera fila con los nombres de las columnas `titulo` (obligatoria), `descripcion` y `columna` (opcionales), sin distinguir mayúsculas ni tildes; las demás columnas se ignoran. Separador coma o punto y coma (el de Excel en español), según cuál abunde más en la cabecera. Comillas a lo RFC 4180, saltos de línea dentro de un campo, BOM y `\r\n`. Se lee como UTF-8 y, si no lo es, como Windows-1252 (Excel antiguo), para que las tildes no se rompan.
+- **Dónde van**: a la columna del tablero que se llame como dice `columna` (sin distinguir mayúsculas ni tildes). Si no trae columna o no existe, a la **primera** columna; nunca se crean columnas. Van al final de su columna, en el orden del archivo. Un título repetido se crea igual: no hay forma fiable de saber si es la misma tarea.
+- **Errores**: las filas vacías se ignoran y las que no tienen título se saltan; se importan las buenas y el aviso dice cuántas se crearon y qué filas se saltaron. Un archivo vacío, sin columna `titulo`, con comillas sin cerrar, de más de 1 MB o de más de 500 tarjetas (`MAX_IMPORT_ROWS`) no importa nada.
+- **Sin vista previa ni etiquetas**, de momento: se importa al elegir el archivo para que el gesto sea corto; como solo añade (no borra ni cambia nada), lo importado se puede borrar a mano. Etiquetas y exportar quedan para otro encargo.
+- **Código**: lector puro sin dependencias en `src/board/csv.ts` (como la validación: sin Papa Parse, mensajes en español), acción `cards/import` en el reducer con ids creados por `importCards()` de `actions.ts`, y la interfaz en `src/components/ImportCards.tsx`. Si algún id está repetido o la columna por defecto no existe, el reducer devuelve el mismo tablero. No cambia el formato guardado.
+
 ## Lo que la app no hace todavía
 
-Se dejó fuera a propósito: fechas límite, búsqueda y filtros, exportar e importar, checklists, asignar personas, varios tableros, compartir y permisos, historial de actividad y deshacer.
+Se dejó fuera a propósito: fechas límite, búsqueda y filtros, exportar (importar tarjetas desde CSV sí está, ver arriba), etiquetas al importar, checklists, asignar personas, varios tableros, compartir y permisos, historial de actividad y deshacer.
 
 ## Registro de decisiones
 
@@ -135,3 +145,4 @@ Se dejó fuera a propósito: fechas límite, búsqueda y filtros, exportar e imp
 | 2026-11-17 | Encargo #1: sombra suave `--shadow-hover` al pasar el ratón por una tarjeta, solo en dispositivos con ratón (en táctil el hover se queda pegado), sin moverla para no empujar a las demás y conservando el anillo de foco. Sin prueba en Vitest: jsdom no aplica `:hover` ni pinta sombras y la interfaz no se prueba por clases CSS; se revisa a mano en navegador. |
 | 2026-11-17 | Preferencias de la interfaz fuera de los datos del tablero: módulo y clave propios, nunca en `storage.ts`, y aplicadas antes del primer pintado. Se decide al revisar la PR #5, que guardaba el tema en `storage.ts` y por eso pasaba a riesgo alto. |
 | 2026-11-17 | Encargo #6: modo oscuro. Botón en la cabecera, tokens oscuros en `tokens.css` bajo `data-tema="oscuro"`, preferencia en `src/preferencias/` con clave `clonello:preferencias` (excepción explícita a la regla de `localStorage`) y script en `index.html` para no destellar. Empieza siempre en claro y solo hay dos opciones. Colores sueltos pasados a tokens. Sin tocar `src/board/`. |
+| 2026-11-17 | Encargo #15: importar tarjetas desde un CSV. Lector propio en `src/board/csv.ts` (coma o punto y coma, comillas, BOM, UTF-8 o Windows-1252), acción `cards/import` con ids de `actions.ts`, columna por nombre y si no la primera, filas sin título saltadas y avisadas, máximo 500 tarjetas y 1 MB, sin vista previa ni etiquetas. Formato guardado sin cambios. |
