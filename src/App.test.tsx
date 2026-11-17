@@ -152,6 +152,59 @@ describe('App', () => {
     expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(4);
   });
 
+  describe('contador de tarjetas', () => {
+    const nombres = ['Ideas', 'Por hacer', 'En curso', 'Hecho'];
+
+    it('muestra cuántas tarjetas tiene cada columna', () => {
+      render(<App />);
+      for (const nombre of nombres) {
+        expect(within(column(nombre)).getByText('3 tarjetas')).toBeInTheDocument();
+      }
+    });
+
+    it('el contador sube al añadir una tarjeta', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      const hecho = column('Hecho');
+      await user.click(within(hecho).getByRole('button', { name: 'Añadir tarjeta' }));
+      await user.type(within(hecho).getByRole('textbox', { name: /nueva tarjeta/ }), 'Publicar la web{Enter}');
+      expect(within(hecho).getByText('4 tarjetas')).toBeInTheDocument();
+      for (const nombre of ['Ideas', 'Por hacer', 'En curso']) {
+        expect(within(column(nombre)).getByText('3 tarjetas')).toBeInTheDocument();
+      }
+    });
+
+    it('el contador baja al borrar o mover una tarjeta', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+
+      await user.click(screen.getByRole('button', { name: 'Mapa de páginas de la web' }));
+      await user.click(screen.getByRole('button', { name: 'Borrar tarjeta' }));
+      await user.click(screen.getByRole('button', { name: 'Sí, borrar' }));
+      expect(within(column('Hecho')).getByText('2 tarjetas')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Boletín mensual con ofertas' }));
+      const dialog = screen.getByRole('dialog');
+      await user.selectOptions(within(dialog).getByRole('combobox', { name: 'Columna' }), 'En curso');
+      await user.click(within(dialog).getByRole('button', { name: 'Listo' }));
+      expect(within(column('Ideas')).getByText('2 tarjetas')).toBeInTheDocument();
+      expect(within(column('En curso')).getByText('4 tarjetas')).toBeInTheDocument();
+    });
+
+    it('singular y columna vacía', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.click(screen.getByRole('button', { name: 'Nueva columna' }));
+      await user.type(screen.getByRole('textbox', { name: 'Nombre de la nueva columna' }), 'Revisión{Enter}');
+      const revision = column('Revisión');
+      expect(within(revision).getByText('0 tarjetas')).toBeInTheDocument();
+
+      await user.click(within(revision).getByRole('button', { name: 'Añadir tarjeta' }));
+      await user.type(within(revision).getByRole('textbox', { name: /nueva tarjeta/ }), 'Probar en móvil{Enter}');
+      expect(within(revision).getByText('1 tarjeta')).toBeInTheDocument();
+    });
+  });
+
   describe('modo oscuro', () => {
     // La cabecera de la app es la primera: jsdom también da rol banner a las cabeceras de columna.
     const banner = () => screen.getAllByRole('banner')[0]!;

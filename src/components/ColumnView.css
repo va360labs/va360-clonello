@@ -32,7 +32,7 @@
 }
 
 .column__title {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   font-size: var(--fs-md);
   font-weight: 650;
@@ -60,6 +60,17 @@ button.column__title-btn {
 
 button.column__title-btn:hover {
   background: var(--surface-sunken);
+}
+
+.column__count {
+  flex: none;
+  /* Pegado al nombre; el margen automático empuja el asa y el menú a la derecha */
+  margin: 0 auto 0 0.15rem;
+  padding-right: 0.35rem;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 .column__rename {
