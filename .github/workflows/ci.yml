@@ -1,0 +1,65 @@
+name: CI y despliegue
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# En una PR, un push nuevo cancela la comprobación anterior. En main no se cancela
+# nada a medias para no cortar un despliegue.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  pruebas:
+    name: Pruebas y build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Comprobar tipos
+        run: npm run typecheck
+
+      - name: Pruebas
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Preparar la web para GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  desplegar:
+    name: Desplegar en GitHub Pages
+    needs: pruebas
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - name: Desplegar
+        id: despliegue
+        uses: actions/deploy-pages@v5
