@@ -123,9 +123,21 @@ Una preferencia visual se aplica antes del primer pintado (un script corto en `i
 - La cabecera sigue navy en los dos temas; en oscuro se separa del fondo con un filete (`--header-line`). El dorado sigue igual y sobre él el texto sigue siendo navy. `<meta name="theme-color">` no cambia: la cabecera es navy en ambos.
 - Los colores sueltos que quedaban en los `.css` pasaron a tokens (`--text-on-danger`, `--text-on-label`, `--backdrop`, `--header-divider`, `--line-bold`). Las etiquetas tiñen su fondo mezclando su color con `--surface` (`--label-tint`, más intenso en oscuro); sus tonos (`LABEL_HEX`) no cambian porque son datos y se leen bien sobre los dos fondos.
 
+## Exportar el tablero a CSV
+
+- Botón «Exportar tablero» en la cabecera, junto al del tema. Descarga `clonello-AAAA-MM-DD.csv` (fecha local de la descarga) con el tablero tal como está.
+- El contenido lo genera `boardToCsv(board)` en `src/board/exportCsv.ts`: función pura que solo lee. La descarga (Blob, `URL.createObjectURL` y un enlace) vive en `Header.tsx`.
+- Formato: fila de cabecera `Columna;Tarjeta;Descripción;Etiquetas` y una fila por tarjeta en el orden de la pantalla. Una columna vacía sale como una fila con su nombre y el resto en blanco. Etiquetas por nombre, separadas por «, » en una sola celda. Solo lo legible: sin ids ni colores.
+- Separador **punto y coma**: Excel en español usa la coma como decimal y con «;» abre cada dato en su celda sin asistente; LibreOffice lo detecta. Fin de línea CRLF.
+- **BOM UTF‑8** al principio: sin él Excel lee el archivo como ANSI y estropea tildes y eñes.
+- Celdas entre comillas (y comillas internas duplicadas) si llevan `;`, `,`, comillas o saltos de línea.
+- **Protección contra fórmulas**: un texto que empieza por `=`, `+`, `-`, `@`, tabulador o retorno se escribe con un apóstrofo delante (`'=SUMA…`), para que Excel lo trate como texto y no lo ejecute.
+- **Por qué no es una acción del reducer**: exportar no cambia el estado. Una función pura de lectura se prueba sin navegador, no toca `types.ts`, `schema.ts`, `storage.ts` ni `localStorage`, y el reducer sigue siendo solo para cambios.
+- Solo CSV, no JSON: la importación (#16) se revirtió. Si vuelve, conviene decidir entonces un formato de ida y vuelta (probablemente el JSON del sobre `clonello:v1`), porque el CSV pierde ids y colores.
+
 ## Lo que la app no hace todavía
 
-Se dejó fuera a propósito: fechas límite, búsqueda y filtros, exportar e importar, checklists, asignar personas, varios tableros, compartir y permisos, historial de actividad y deshacer.
+Se dejó fuera a propósito: fechas límite, búsqueda y filtros, importar, checklists, asignar personas, varios tableros, compartir y permisos, historial de actividad y deshacer.
 
 ## Registro de decisiones
 
@@ -136,3 +148,4 @@ Se dejó fuera a propósito: fechas límite, búsqueda y filtros, exportar e imp
 | 2026-11-17 | Preferencias de la interfaz fuera de los datos del tablero: módulo y clave propios, nunca en `storage.ts`, y aplicadas antes del primer pintado. Se decide al revisar la PR #5, que guardaba el tema en `storage.ts` y por eso pasaba a riesgo alto. |
 | 2026-11-17 | Encargo #6: modo oscuro. Botón en la cabecera, tokens oscuros en `tokens.css` bajo `data-tema="oscuro"`, preferencia en `src/preferencias/` con clave `clonello:preferencias` (excepción explícita a la regla de `localStorage`) y script en `index.html` para no destellar. Empieza siempre en claro y solo hay dos opciones. Colores sueltos pasados a tokens. Sin tocar `src/board/`. |
 | 2026-11-17 | Encargo #24: contador de tarjetas en la cabecera de cada columna. Sale de `column.cardIds.length`, sin tocar `src/board/`. Va fuera del `<h2>` para que el título y el nombre accesible de la columna sigan siendo solo su nombre (y renombrar no cambie). El número visible es `aria-hidden` y el lector de pantalla oye un texto oculto «N tarjetas» / «1 tarjeta». Píldora discreta con `--surface-sunken` y `--text-muted`, sin dorado porque no es interactiva. También se muestra en la columna que vuela al arrastrar, por coherencia (pregunta abierta de la ficha). |
+| 2026-11-17 | Encargo #23: exportar el tablero a CSV. Función pura `boardToCsv` en `src/board/exportCsv.ts` (lectura, no acción del reducer) y botón «Exportar tablero» en la cabecera. Separador `;`, BOM UTF‑8, CRLF, comillas RFC 4180, apóstrofo delante de `= + - @` para neutralizar fórmulas, columnas vacías como fila con su nombre, etiquetas por nombre y archivo `clonello-AAAA-MM-DD.csv`. Solo CSV; un JSON reimportable queda para cuando vuelva la importación. «Compartir» se entiende como mandar el archivo a mano: sin servidor. |
