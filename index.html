@@ -7,6 +7,18 @@
     <meta name="theme-color" content="#1A1A2E" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>VA360 · Clonello</title>
+    <script>
+      // Aplica el tema guardado antes del primer pintado, para que no destelle.
+      // Misma clave y formato que src/preferencias/tema.ts; ante cualquier duda, claro.
+      (function () {
+        var tema = 'claro';
+        try {
+          var guardado = JSON.parse(localStorage.getItem('clonello:preferencias') || 'null');
+          if (guardado && guardado.tema === 'oscuro') tema = 'oscuro';
+        } catch (e) {}
+        document.documentElement.setAttribute('data-tema', tema);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

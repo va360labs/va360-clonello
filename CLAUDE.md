@@ -21,8 +21,8 @@ npm run build       # tipos + build de producción en dist/
 3. **No toques `.github/workflows/` ni el esquema de datos sin que el encargo lo pida.** El esquema son `src/board/types.ts`, `src/board/schema.ts` y las claves de `src/board/storage.ts`. Si el encargo lo pide, sigue el procedimiento de migración de `docs/memoria.md`.
 4. **Registra cada decisión de arquitectura en `docs/memoria.md`**, en la misma PR: qué se decidió, por qué y la fecha.
 5. **Textos de la interfaz en español**: botones, avisos, errores, `aria-label` y anuncios para lectores de pantalla. Frases cortas, en mayúscula solo la primera letra y sin tecnicismos.
-6. **La lógica va en el reducer puro** (`src/board/reducer.ts`). Los componentes solo despachan acciones. Nadie fuera de `src/board/storage.ts` lee ni escribe `localStorage`.
-7. **Paleta y tipografía**: usa los tokens de `src/styles/tokens.css` (navy `#1A1A2E` en la cabecera y dorado `#C9A227` como único acento, solo en lo interactivo). Nada de colores sueltos ni fuentes nuevas.
+6. **La lógica va en el reducer puro** (`src/board/reducer.ts`). Los componentes solo despachan acciones. Nadie fuera de `src/board/storage.ts` lee ni escribe `localStorage`, salvo las preferencias de la interfaz: `src/preferencias/` y el script de `index.html`, solo en la clave `clonello:preferencias`.
+7. **Paleta y tipografía**: usa los tokens de `src/styles/tokens.css` (navy `#1A1A2E` en la cabecera y dorado `#C9A227` como único acento, solo en lo interactivo). Nada de colores sueltos ni fuentes nuevas. El tema oscuro redefine esos mismos tokens bajo `data-tema="oscuro"`.
 8. **La demo publicada nunca aparece vacía.** Si cambias los datos de ejemplo (`src/board/seed.ts`), que sigan siendo 4 columnas y unas 12 tarjetas válidas.
 9. **Una PR por encargo**, pequeña y con commits en español.
 
@@ -32,6 +32,7 @@ npm run build       # tipos + build de producción en dist/
 | --- | --- |
 | `src/board/` | Dominio puro: tipos, reducer, acciones, validación del esquema, datos de ejemplo y `localStorage`. Sin React. |
 | `src/state/BoardProvider.tsx` | Une el reducer con `localStorage` y lo expone con `useBoard()`. |
+| `src/preferencias/` | Preferencias de la interfaz (tema claro u oscuro), en su propia clave de `localStorage`. |
 | `src/components/` | Interfaz: tablero, columnas, tarjetas, modal de detalle. Cada componente con su `.css`. |
 | `src/styles/` | Tokens de diseño y estilos base. |
 | `src/App.test.tsx` | Pruebas de la app completa con Testing Library. |

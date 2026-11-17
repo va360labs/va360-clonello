@@ -1,15 +1,18 @@
 import { useState } from 'react';
-import type { StorageLike } from './board/storage';
+import { browserStorage, type StorageLike } from './board/storage';
 import { BoardView } from './components/BoardView';
 import { Header } from './components/Header';
+import { useTheme } from './preferencias/useTheme';
 import { BoardProvider, useBoard } from './state/BoardProvider';
 import './App.css';
 
 export function App({ storage }: { storage?: StorageLike | null }) {
+  const [store] = useState(() => (storage === undefined ? browserStorage() : storage));
+  const { theme, toggleTheme } = useTheme(store);
   return (
-    <BoardProvider storage={storage}>
+    <BoardProvider storage={store}>
       <div className="app">
-        <Header />
+        <Header theme={theme} onToggleTheme={toggleTheme} />
         <main className="app__main">
           <RecoveryNotice />
           <BoardView />
