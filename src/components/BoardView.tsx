@@ -28,6 +28,7 @@ import { AddColumnForm } from './AddColumnForm';
 import { CardFace } from './CardTile';
 import { CardModal } from './CardModal';
 import { ColumnPreview, ColumnView } from './ColumnView';
+import { ImportCardsButton } from './ImportCardsButton';
 import './BoardView.css';
 
 type DragKind = 'card' | 'column';
@@ -173,6 +174,7 @@ export function BoardView() {
         <h1 id="board-title" className="board__title">
           {board.title}
         </h1>
+        <ImportCardsButton />
       </div>
 
       <DndContext

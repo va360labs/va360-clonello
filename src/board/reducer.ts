@@ -1,3 +1,4 @@
+import { normalizeName } from './text';
 import type { Board, Card, Column, LabelColor } from './types';
 
 /**
@@ -17,7 +18,20 @@ export type BoardAction =
   | { type: 'card/move'; cardId: string; toColumnId: string; toIndex: number }
   | { type: 'card/toggleLabel'; cardId: string; labelId: string }
   | { type: 'label/add'; id: string; name: string; color: LabelColor }
+  /**
+   * Añade varias tarjetas de golpe (importar un CSV), al final de su columna y en
+   * orden. `column` es el título de la columna, sin distinguir mayúsculas ni
+   * tildes; si viene vacío o no existe, la tarjeta va a la primera columna.
+   */
+  | { type: 'cards/import'; cards: ImportedCard[] }
   | { type: 'board/replace'; board: Board };
+
+export interface ImportedCard {
+  id: string;
+  title: string;
+  description: string;
+  column: string;
+}
 
 export function boardReducer(board: Board, action: BoardAction): Board {
   switch (action.type) {
@@ -129,6 +143,36 @@ export function boardReducer(board: Board, action: BoardAction): Board {
       );
       if (!name || taken) return board;
       return { ...board, labels: [...board.labels, { id: action.id, name, color: action.color }] };
+    }
+
+    case 'cards/import': {
+      const [firstColumn] = board.columns;
+      if (!firstColumn) return board;
+      // Un id repetido o ya usado no pisa nada: no se importa ninguna tarjeta.
+      const ids = action.cards.map((c) => c.id);
+      if (new Set(ids).size !== ids.length || ids.some((id) => !id || Object.hasOwn(board.cards, id))) return board;
+
+      const columnByName = new Map<string, string>();
+      for (const c of [...board.columns].reverse()) columnByName.set(normalizeName(c.title), c.id);
+
+      const cards = { ...board.cards };
+      const added = new Map<string, string[]>();
+      for (const imported of action.cards) {
+        const title = imported.title.trim();
+        if (!title) continue;
+        const columnId = columnByName.get(normalizeName(imported.column)) ?? firstColumn.id;
+        cards[imported.id] = { id: imported.id, title, description: imported.description, labelIds: [] };
+        added.set(columnId, [...(added.get(columnId) ?? []), imported.id]);
+      }
+      if (added.size === 0) return board;
+      return {
+        ...board,
+        columns: board.columns.map((c) => {
+          const extra = added.get(c.id);
+          return extra ? { ...c, cardIds: [...c.cardIds, ...extra] } : c;
+        }),
+        cards,
+      };
     }
 
     case 'board/replace':

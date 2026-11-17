@@ -152,6 +152,83 @@ describe('App', () => {
     expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(4);
   });
 
+  describe('importar tarjetas', () => {
+    const csvFile = (content: string | Uint8Array<ArrayBuffer>, name = 'tarjetas.csv') =>
+      new File([content], name, { type: 'text/csv' });
+    const importar = (user: ReturnType<typeof userEvent.setup>, file: File) =>
+      user.upload(screen.getByLabelText('Importar tarjetas'), file);
+
+    it('hay un botón «Importar tarjetas» que solo ofrece archivos .csv', () => {
+      render(<App />);
+      expect(screen.getByRole('button', { name: 'Importar tarjetas' })).toBeInTheDocument();
+      const input = screen.getByLabelText('Importar tarjetas');
+      expect(input).toHaveAttribute('type', 'file');
+      expect(input).toHaveAttribute('accept', '.csv');
+    });
+
+    it('importa tarjetas desde un CSV', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await importar(
+        user,
+        csvFile(
+          '﻿Título;Descripción;Columna\r\nPublicar en redes;"Instagram, Facebook";Hecho\r\nRevisar textos;;\r\n;Sin título;Hecho\r\nMedir visitas;;hecho\r\n',
+        ),
+      );
+
+      expect(await screen.findByText('Se importaron 3 tarjetas. Se descartó 1 fila sin título.')).toBeInTheDocument();
+      const hecho = column('Hecho');
+      const enHecho = within(hecho).getAllByRole('listitem').map((li) => li.textContent);
+      expect(enHecho).toHaveLength(5);
+      expect(enHecho.at(-2)).toMatch(/^Publicar en redes/);
+      expect(enHecho.at(-1)).toMatch(/^Medir visitas/);
+      expect(within(column('Ideas')).getByRole('button', { name: 'Revisar textos' })).toBeInTheDocument();
+
+      await user.click(within(hecho).getByRole('button', { name: 'Publicar en redes' }));
+      const dialog = screen.getByRole('dialog', { name: 'Publicar en redes' });
+      expect(within(dialog).getByRole('textbox', { name: 'Descripción' })).toHaveValue('Instagram, Facebook');
+    });
+
+    it('lee bien las tildes de un CSV del Excel antiguo', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      const bytes = new Uint8Array([...new TextEncoder().encode('titulo\nDise'), 0xf1, 0x6f, 0x0a]);
+      await importar(user, csvFile(bytes));
+      expect(await screen.findByText('Se importó 1 tarjeta.')).toBeInTheDocument();
+      expect(within(column('Ideas')).getByRole('button', { name: 'Diseño' })).toBeInTheDocument();
+    });
+
+    it('avisa si el archivo no se puede leer', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      const antes = window.localStorage.getItem(STORAGE_KEY);
+
+      await importar(user, csvFile('nombre;precio\nCafé;1,20\n'));
+      expect(await screen.findByText(/El archivo no tiene una columna «titulo»/)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Café' })).not.toBeInTheDocument();
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBe(antes);
+
+      await importar(user, csvFile(''));
+      expect(await screen.findByText(/El archivo está vacío/)).toBeInTheDocument();
+      await importar(user, csvFile('titulo,descripcion\n,Algo\n , Otra\n'));
+      expect(await screen.findByText(/Ninguna fila tiene título/)).toBeInTheDocument();
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBe(antes);
+    });
+
+    it('las tarjetas importadas siguen ahí al recargar', async () => {
+      const user = userEvent.setup();
+      const { unmount } = render(<App />);
+      await importar(user, csvFile('titulo,columna\nViaje a Lisboa,Por hacer\nViaje a Oporto,Por hacer\n'));
+      await screen.findByText('Se importaron 2 tarjetas.');
+      unmount();
+
+      render(<App />);
+      const porHacer = column('Por hacer');
+      expect(within(porHacer).getByRole('button', { name: 'Viaje a Lisboa' })).toBeInTheDocument();
+      expect(within(porHacer).getByRole('button', { name: 'Viaje a Oporto' })).toBeInTheDocument();
+    });
+  });
+
   describe('modo oscuro', () => {
     // La cabecera de la app es la primera: jsdom también da rol banner a las cabeceras de columna.
     const banner = () => screen.getAllByRole('banner')[0]!;
