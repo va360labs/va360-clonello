@@ -7,14 +7,17 @@ import {
   type Dispatch,
   type ReactNode,
 } from 'react';
-import { boardReducer, type BoardAction } from '../board/reducer';
-import { browserStorage, loadBoard, saveBoard, type LoadResult, type StorageLike } from '../board/storage';
-import type { Board } from '../board/types';
+import { workspaceReducer, type WorkspaceAction } from '../board/reducer';
+import { browserStorage, loadWorkspace, saveWorkspace, type LoadResult, type StorageLike } from '../board/storage';
+import type { BoardEntry } from '../board/types';
 
 interface BoardContextValue {
-  board: Board;
-  dispatch: Dispatch<BoardAction>;
-  /** Cómo se cargó el tablero al abrir la app (para avisar si hubo que recuperar). */
+  /** El tablero abierto. */
+  board: BoardEntry;
+  /** Todos los tableros, en el orden del selector. */
+  boards: BoardEntry[];
+  dispatch: Dispatch<WorkspaceAction>;
+  /** Cómo se cargaron los datos al abrir la app (para avisar si hubo que recuperar). */
   loadResult: Pick<LoadResult, 'origin' | 'problems'>;
 }
 
@@ -29,16 +32,24 @@ interface BoardProviderProps {
 /** Une el reducer puro con localStorage: carga al montar y guarda cada cambio. */
 export function BoardProvider({ children, storage }: BoardProviderProps) {
   const [store] = useState(() => (storage === undefined ? browserStorage() : storage));
-  const [initial] = useState(() => loadBoard(store));
-  const [board, dispatch] = useReducer(boardReducer, initial.board);
+  const [initial] = useState(() => loadWorkspace(store));
+  const [workspace, dispatch] = useReducer(workspaceReducer, initial.workspace);
 
   useEffect(() => {
-    saveBoard(store, board);
-  }, [store, board]);
+    saveWorkspace(store, workspace);
+  }, [store, workspace]);
+
+  // El reducer garantiza que el abierto existe; el primero es solo una red de seguridad.
+  const board = workspace.boards.find((b) => b.id === workspace.activeBoardId) ?? workspace.boards[0]!;
 
   return (
     <BoardContext.Provider
-      value={{ board, dispatch, loadResult: { origin: initial.origin, problems: initial.problems } }}
+      value={{
+        board,
+        boards: workspace.boards,
+        dispatch,
+        loadResult: { origin: initial.origin, problems: initial.problems },
+      }}
     >
       {children}
     </BoardContext.Provider>

@@ -6,6 +6,10 @@
 }
 
 .board__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
   padding: 1.9rem var(--gutter) 1.4rem;
 }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createSeedBoard } from './seed';
+import { validateStoredData } from './schema';
+import { createSeedBoard, createSeedData } from './seed';
 
 describe('datos de ejemplo', () => {
   it('traen 4 columnas y una docena de tarjetas', () => {
@@ -22,5 +23,19 @@ describe('datos de ejemplo', () => {
     const a = createSeedBoard();
     a.columns[0]!.title = 'Cambiado';
     expect(createSeedBoard().columns[0]!.title).not.toBe('Cambiado');
+  });
+});
+
+describe('datos de ejemplo v2', () => {
+  it('los datos de ejemplo v2 son válidos', () => {
+    const data = createSeedData();
+    expect(data.boards.length).toBeGreaterThanOrEqual(1);
+    const open = data.boards.find((b) => b.id === data.activeBoardId);
+    expect(open).toBeDefined();
+    expect(open!.columns).toHaveLength(4);
+    const total = open!.columns.reduce((sum, c) => sum + c.cardIds.length, 0);
+    expect(total).toBeGreaterThanOrEqual(10);
+    expect(total).toBeLessThanOrEqual(14);
+    expect(validateStoredData(data).ok).toBe(true);
   });
 });

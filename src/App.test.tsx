@@ -2,11 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from './App';
-import { STORAGE_KEY } from './board/storage';
+import { REAL_V1 } from './board/fixtures';
+import { STORAGE_KEY, V1_STORAGE_KEY } from './board/storage';
 import { PREFERENCES_KEY } from './preferencias/tema';
 
 const column = (name: string) => screen.getByRole('region', { name });
-const storedBoard = () => JSON.parse(window.localStorage.getItem(STORAGE_KEY)!).board;
+/** El tablero abierto tal y como está guardado en clonello:v2. */
+const storedBoard = () => {
+  const data = JSON.parse(window.localStorage.getItem(STORAGE_KEY)!);
+  return data.boards.find((b: { id: string }) => b.id === data.activeBoardId);
+};
+const boardTitle = () => screen.getByRole('heading', { level: 1 });
 
 describe('App', () => {
   it('muestra el tablero de ejemplo la primera vez', () => {
@@ -150,6 +156,137 @@ describe('App', () => {
     render(<App />);
     expect(screen.getByText(/No se pudieron leer los datos guardados/)).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(4);
+  });
+
+  describe('varios tableros', () => {
+    const openBoards = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('button', { name: 'Tableros' }));
+      return screen.getByRole('group', { name: 'Tableros' });
+    };
+    const createBoard = async (user: ReturnType<typeof userEvent.setup>, title: string) => {
+      const panel = await openBoards(user);
+      await user.click(within(panel).getByRole('button', { name: 'Nuevo tablero' }));
+      await user.type(within(panel).getByRole('textbox', { name: 'Nombre del nuevo tablero' }), `${title}{Enter}`);
+    };
+    const selectBoard = async (user: ReturnType<typeof userEvent.setup>, title: string) => {
+      const panel = await openBoards(user);
+      await user.click(within(panel).getByRole('button', { name: title }));
+    };
+
+    it('se puede crear un tablero nuevo', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await createBoard(user, 'Mi tablero');
+      expect(boardTitle()).toHaveTextContent('Mi tablero');
+      const titles = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+      expect(titles).toEqual(['Por hacer', 'En curso', 'Hecho']);
+      expect(screen.queryByRole('group', { name: 'Tableros' })).not.toBeInTheDocument();
+
+      const panel = await openBoards(user);
+      expect(within(panel).getByRole('button', { name: 'Mi tablero' })).toHaveAttribute('aria-current', 'true');
+      expect(within(panel).getByRole('button', { name: 'Lanzamiento de la web de Brisa Viajes' })).not.toHaveAttribute(
+        'aria-current',
+      );
+    });
+
+    it('se puede cambiar de tablero y cada uno conserva sus tarjetas', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await createBoard(user, 'Tablero B');
+      await selectBoard(user, 'Lanzamiento de la web de Brisa Viajes');
+      expect(boardTitle()).toHaveTextContent('Lanzamiento de la web de Brisa Viajes');
+
+      await user.click(within(column('Hecho')).getByRole('button', { name: 'Añadir tarjeta' }));
+      await user.type(within(column('Hecho')).getByRole('textbox', { name: /nueva tarjeta/ }), 'Solo en A{Enter}');
+      expect(screen.getByRole('button', { name: 'Solo en A' })).toBeInTheDocument();
+
+      await selectBoard(user, 'Tablero B');
+      expect(boardTitle()).toHaveTextContent('Tablero B');
+      expect(screen.queryByRole('button', { name: 'Solo en A' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Formulario de contacto' })).not.toBeInTheDocument();
+
+      await selectBoard(user, 'Lanzamiento de la web de Brisa Viajes');
+      expect(screen.getByRole('button', { name: 'Solo en A' })).toBeInTheDocument();
+    });
+
+    it('se puede renombrar el tablero abierto', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      const panel = await openBoards(user);
+      await user.click(within(panel).getByRole('button', { name: 'Renombrar tablero' }));
+      const input = within(panel).getByRole('textbox', { name: 'Nombre del tablero' });
+      await user.clear(input);
+      await user.type(input, 'Web nueva{Enter}');
+      expect(boardTitle()).toHaveTextContent('Web nueva');
+      expect(storedBoard().title).toBe('Web nueva');
+    });
+
+    it('el tablero abierto y los tableros se recuerdan al recargar', async () => {
+      const user = userEvent.setup();
+      const { unmount } = render(<App />);
+      await createBoard(user, 'Compras');
+      await user.click(within(column('Por hacer')).getByRole('button', { name: 'Añadir tarjeta' }));
+      await user.type(screen.getByRole('textbox', { name: /nueva tarjeta/ }), 'Pan{Enter}');
+      unmount();
+
+      render(<App />);
+      expect(boardTitle()).toHaveTextContent('Compras');
+      expect(within(column('Por hacer')).getByRole('button', { name: 'Pan' })).toBeInTheDocument();
+      const panel = await openBoards(user);
+      expect(within(panel).getByRole('button', { name: 'Lanzamiento de la web de Brisa Viajes' })).toBeInTheDocument();
+    });
+
+    it('un usuario con datos v1 ve su tablero de siempre', () => {
+      const rawV1 = JSON.stringify(REAL_V1);
+      window.localStorage.setItem(V1_STORAGE_KEY, rawV1);
+      render(<App />);
+      expect(boardTitle()).toHaveTextContent(REAL_V1.board.title);
+      expect(within(column('Ideas')).getByRole('button', { name: 'Sorteo de un viaje' })).toBeInTheDocument();
+      expect(column('Revisión')).toBeInTheDocument();
+      expect(screen.queryByText(/No se pudieron leer los datos guardados/)).not.toBeInTheDocument();
+      expect(window.localStorage.getItem(V1_STORAGE_KEY)).toBe(rawV1);
+      expect(storedBoard().title).toBe(REAL_V1.board.title);
+    });
+
+    it('borrar un tablero pide confirmación y no deja borrar el último', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+
+      let panel = await openBoards(user);
+      expect(within(panel).getByRole('button', { name: 'Borrar tablero' })).toBeDisabled();
+      expect(within(panel).getByText('No se puede borrar el único tablero.')).toBeInTheDocument();
+      await user.keyboard('{Escape}');
+      expect(screen.queryByRole('group', { name: 'Tableros' })).not.toBeInTheDocument();
+
+      await createBoard(user, 'Prueba');
+      panel = await openBoards(user);
+      await user.click(within(panel).getByRole('button', { name: 'Borrar tablero' }));
+      expect(within(panel).getByText('¿Borrar el tablero «Prueba» con todas sus columnas y tarjetas?')).toBeInTheDocument();
+      await user.click(within(panel).getByRole('button', { name: 'Cancelar' }));
+      expect(boardTitle()).toHaveTextContent('Prueba');
+
+      await user.click(within(panel).getByRole('button', { name: 'Borrar tablero' }));
+      await user.click(within(panel).getByRole('button', { name: 'Sí, borrar tablero' }));
+      expect(boardTitle()).toHaveTextContent('Lanzamiento de la web de Brisa Viajes');
+      panel = await openBoards(user);
+      expect(within(panel).queryByRole('button', { name: 'Prueba' })).not.toBeInTheDocument();
+      expect(within(panel).getByRole('button', { name: 'Borrar tablero' })).toBeDisabled();
+    });
+
+    it('el control de tableros se maneja con teclado', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await createBoard(user, 'Segundo');
+      const trigger = screen.getByRole('button', { name: 'Tableros' });
+      trigger.focus();
+      await user.keyboard('{Enter}');
+      expect(trigger).toHaveAttribute('aria-expanded', 'true');
+      // El foco entra en la lista, en el tablero abierto.
+      expect(screen.getByRole('button', { name: 'Segundo' })).toHaveFocus();
+      await user.keyboard('{Shift>}{Tab}{/Shift}{Enter}');
+      expect(boardTitle()).toHaveTextContent('Lanzamiento de la web de Brisa Viajes');
+      expect(trigger).toHaveFocus();
+    });
   });
 
   describe('modo oscuro', () => {

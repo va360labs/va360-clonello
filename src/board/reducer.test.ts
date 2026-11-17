@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { boardReducer, findColumnOfCard } from './reducer';
-import type { Board } from './types';
+import { STARTER_COLUMN_TITLES, boardReducer, findColumnOfCard, workspaceReducer } from './reducer';
+import type { Board, Workspace } from './types';
 
 /** Tablero pequeño y predecible para las pruebas. */
 function makeBoard(): Board {
@@ -186,5 +186,141 @@ describe('pureza', () => {
   it('sustituye el tablero entero con board/replace', () => {
     const other = { ...makeBoard(), title: 'Otro' };
     expect(boardReducer(makeBoard(), { type: 'board/replace', board: other })).toBe(other);
+  });
+});
+
+/** Dos tableros: A (abierto) y B. */
+function makeWorkspace(): Workspace {
+  return {
+    activeBoardId: 'b-a',
+    boards: [
+      { id: 'b-a', ...makeBoard(), title: 'Tablero A' },
+      { id: 'b-b', ...makeBoard(), title: 'Tablero B' },
+    ],
+  };
+}
+
+const titles = (ws: Workspace) => ws.boards.map((b) => b.title);
+
+describe('varios tableros', () => {
+  it('crear tablero', () => {
+    const ws = makeWorkspace();
+    const next = workspaceReducer(ws, {
+      type: 'board/create',
+      id: 'b-n',
+      title: '  Mi tablero  ',
+      columnIds: ['c-1', 'c-2', 'c-3'],
+    });
+    expect(titles(next)).toEqual(['Tablero A', 'Tablero B', 'Mi tablero']);
+    expect(next.activeBoardId).toBe('b-n');
+    expect(next.boards[2]).toEqual({
+      id: 'b-n',
+      title: 'Mi tablero',
+      labels: [],
+      cards: {},
+      columns: [
+        { id: 'c-1', title: 'Por hacer', cardIds: [] },
+        { id: 'c-2', title: 'En curso', cardIds: [] },
+        { id: 'c-3', title: 'Hecho', cardIds: [] },
+      ],
+    });
+    expect(STARTER_COLUMN_TITLES).toEqual(['Por hacer', 'En curso', 'Hecho']);
+    expect(next.boards[0]).toBe(ws.boards[0]);
+    expect(next.boards[1]).toBe(ws.boards[1]);
+
+    expect(workspaceReducer(ws, { type: 'board/create', id: 'b-n', title: '   ', columnIds: [] })).toBe(ws);
+    expect(workspaceReducer(ws, { type: 'board/create', id: 'b-b', title: 'Otro', columnIds: [] })).toBe(ws);
+    expect(
+      workspaceReducer(ws, { type: 'board/create', id: 'b-n', title: 'Otro', columnIds: ['c-1', 'c-1', 'c-2'] }),
+    ).toBe(ws);
+  });
+
+  it('crear tablero sin ids de columna lo deja vacío', () => {
+    const next = workspaceReducer(makeWorkspace(), { type: 'board/create', id: 'b-n', title: 'Vacío', columnIds: [] });
+    expect(next.boards[2]?.columns).toEqual([]);
+  });
+
+  it('cambiar de tablero', () => {
+    const ws = makeWorkspace();
+    const next = workspaceReducer(ws, { type: 'board/select', boardId: 'b-b' });
+    expect(next.activeBoardId).toBe('b-b');
+    expect(next.boards).toBe(ws.boards);
+    expect(workspaceReducer(ws, { type: 'board/select', boardId: 'nada' })).toBe(ws);
+    expect(workspaceReducer(ws, { type: 'board/select', boardId: 'b-a' })).toBe(ws);
+  });
+
+  it('renombrar tablero', () => {
+    const ws = makeWorkspace();
+    const next = workspaceReducer(ws, { type: 'board/rename', boardId: 'b-b', title: ' Ventas ' });
+    expect(titles(next)).toEqual(['Tablero A', 'Ventas']);
+    expect(next.boards[1]).toEqual({ ...ws.boards[1], title: 'Ventas' });
+    expect(next.boards[0]).toBe(ws.boards[0]);
+    expect(next.activeBoardId).toBe('b-a');
+    expect(workspaceReducer(ws, { type: 'board/rename', boardId: 'b-b', title: '  ' })).toBe(ws);
+    expect(workspaceReducer(ws, { type: 'board/rename', boardId: 'b-b', title: 'Tablero B' })).toBe(ws);
+    expect(workspaceReducer(ws, { type: 'board/rename', boardId: 'nada', title: 'X' })).toBe(ws);
+  });
+
+  it('borrar tablero', () => {
+    const ws = makeWorkspace();
+    const next = workspaceReducer(ws, { type: 'board/delete', boardId: 'b-a' });
+    expect(titles(next)).toEqual(['Tablero B']);
+    expect(next.activeBoardId).toBe('b-b');
+
+    // Borrar uno que no está abierto deja abierto el mismo.
+    const other = workspaceReducer(ws, { type: 'board/delete', boardId: 'b-b' });
+    expect(other.activeBoardId).toBe('b-a');
+
+    // Al borrar el abierto se abre el anterior en la lista (o el siguiente si era el primero).
+    const three = workspaceReducer(
+      workspaceReducer(ws, { type: 'board/create', id: 'b-c', title: 'C', columnIds: [] }),
+      { type: 'board/delete', boardId: 'b-c' },
+    );
+    expect(three.activeBoardId).toBe('b-b');
+
+    expect(workspaceReducer(ws, { type: 'board/delete', boardId: 'nada' })).toBe(ws);
+    expect(workspaceReducer(next, { type: 'board/delete', boardId: 'b-b' })).toBe(next);
+  });
+
+  it('las acciones de columnas y tarjetas solo afectan al tablero abierto', () => {
+    const ws = makeWorkspace();
+    const actions = [
+      { type: 'card/add', id: 'k-n', columnId: 'c-a', title: 'Nueva' },
+      { type: 'card/move', cardId: 'k-1', toColumnId: 'c-c', toIndex: 0 },
+      { type: 'card/update', cardId: 'k-2', changes: { title: 'Otra' } },
+      { type: 'card/delete', cardId: 'k-3' },
+      { type: 'card/toggleLabel', cardId: 'k-3', labelId: 'l-2' },
+      { type: 'column/add', id: 'c-n', title: 'Ideas' },
+      { type: 'column/rename', columnId: 'c-a', title: 'Pendiente' },
+      { type: 'column/move', columnId: 'c-c', toIndex: 0 },
+      { type: 'column/delete', columnId: 'c-b' },
+      { type: 'label/add', id: 'l-n', name: 'Nueva', color: 'verde' },
+    ] as const;
+    for (const action of actions) {
+      const next = workspaceReducer(ws, action);
+      expect(next, action.type).not.toBe(ws);
+      expect(next.boards[0], action.type).toEqual({ ...boardReducer(ws.boards[0]!, action), id: 'b-a' });
+      expect(next.boards[1], action.type).toBe(ws.boards[1]);
+      expect(next.activeBoardId).toBe('b-a');
+    }
+
+    // Una acción sin efecto devuelve el mismo objeto.
+    expect(workspaceReducer(ws, { type: 'card/add', id: 'k-1', columnId: 'c-a', title: 'X' })).toBe(ws);
+
+    // board/replace sustituye el contenido del abierto sin cambiarle el id.
+    const replaced = workspaceReducer(ws, { type: 'board/replace', board: { ...makeBoard(), title: 'Otro' } });
+    expect(replaced.boards[0]).toEqual({ ...makeBoard(), title: 'Otro', id: 'b-a' });
+    expect(replaced.boards[1]).toBe(ws.boards[1]);
+  });
+
+  it('las acciones de tableros nunca mutan la entrada', () => {
+    const ws = makeWorkspace();
+    const before = structuredClone(ws);
+    workspaceReducer(ws, { type: 'board/create', id: 'b-n', title: 'N', columnIds: ['c-1'] });
+    workspaceReducer(ws, { type: 'board/rename', boardId: 'b-a', title: 'N' });
+    workspaceReducer(ws, { type: 'board/select', boardId: 'b-b' });
+    workspaceReducer(ws, { type: 'board/delete', boardId: 'b-a' });
+    workspaceReducer(ws, { type: 'card/add', id: 'k-n', columnId: 'c-a', title: 'Nueva' });
+    expect(ws).toEqual(before);
   });
 });

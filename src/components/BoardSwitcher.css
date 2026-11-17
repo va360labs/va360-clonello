@@ -1,0 +1,75 @@
+/* Control de tableros junto al título. Reutiliza .menu, .menu__panel y
+   .menu__item (ColumnView.css) y .add-form para los formularios. */
+.board-switcher__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 2.25rem;
+  padding: 0 0.7rem 0 0.85rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+
+.board-switcher__trigger:hover {
+  border-color: var(--line-bold);
+}
+
+.board-switcher__trigger[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.board-switcher__panel {
+  right: auto;
+  left: 0;
+  width: 19rem;
+  max-width: calc(100vw - 2 * var(--gutter));
+}
+
+.board-switcher__heading {
+  padding: 0.45rem 0.7rem 0.25rem;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.board-switcher__boards {
+  max-height: min(18rem, 45vh);
+  overflow-y: auto;
+}
+
+.board-switcher__actions {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--line);
+}
+
+.board-switcher__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.board-switcher__item[aria-current='true'] {
+  background: var(--surface-sunken);
+  font-weight: 600;
+}
+
+.board-switcher__name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-switcher__hint {
+  padding: 0 0.7rem 0.35rem;
+}
+
+.board-switcher__form {
+  margin: 0;
+  padding: 0.5rem;
+}

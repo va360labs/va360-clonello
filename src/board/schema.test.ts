@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { SCHEMA_VERSION, validateStoredData } from './schema';
-import { createSeedBoard } from './seed';
-import type { Board } from './types';
+import { SCHEMA_VERSION, validateStoredData, validateStoredDataV1 } from './schema';
+import { createSeedBoard, createSeedData } from './seed';
+import type { Board, BoardEntry } from './types';
+import { REAL_V1 } from './fixtures';
 
-function stored(board: unknown, version: unknown = SCHEMA_VERSION) {
+function stored(board: unknown, version: unknown = 1) {
   return { version, board };
 }
 
@@ -20,24 +21,24 @@ function validBoard(): Board {
 }
 
 function errorsOf(data: unknown): string[] {
-  const result = validateStoredData(data);
+  const result = validateStoredDataV1(data);
   return result.ok ? [] : result.errors;
 }
 
-describe('validación del esquema', () => {
+describe('validación del esquema v1', () => {
   it('acepta un tablero correcto y los datos de ejemplo', () => {
-    expect(validateStoredData(stored(validBoard())).ok).toBe(true);
-    expect(validateStoredData(stored(createSeedBoard())).ok).toBe(true);
+    expect(validateStoredDataV1(stored(validBoard())).ok).toBe(true);
+    expect(validateStoredDataV1(stored(createSeedBoard())).ok).toBe(true);
   });
 
   it('acepta un tablero sin columnas', () => {
-    expect(validateStoredData(stored({ title: 'Vacío', labels: [], columns: [], cards: {} })).ok).toBe(true);
+    expect(validateStoredDataV1(stored({ title: 'Vacío', labels: [], columns: [], cards: {} })).ok).toBe(true);
   });
 
   it('rechaza lo que no es un objeto o no trae tablero', () => {
     expect(errorsOf(null)).not.toEqual([]);
     expect(errorsOf('texto')).not.toEqual([]);
-    expect(errorsOf({ version: SCHEMA_VERSION })).not.toEqual([]);
+    expect(errorsOf({ version: 1 })).not.toEqual([]);
   });
 
   it('rechaza otra versión del esquema', () => {
@@ -86,5 +87,50 @@ describe('validación del esquema', () => {
     const errors = errorsOf(stored(board)).join(' ');
     expect(errors).toContain('c-a');
     expect(errors).toContain('otro');
+  });
+});
+
+describe('el validador v1 se conserva', () => {
+  it('el validador v1 sigue aceptando un tablero v1 real', () => {
+    expect(validateStoredDataV1(REAL_V1).ok).toBe(true);
+    expect(validateStoredData(REAL_V1).ok).toBe(false);
+  });
+});
+
+describe('validación del esquema v2', () => {
+  const entry = (id: string, title = 'Tablero'): BoardEntry => ({ ...validBoard(), id, title });
+  const v2 = (boards: unknown, activeBoardId: unknown = 'b-1') => ({ version: 2, activeBoardId, boards });
+  const errorsV2 = (data: unknown) => {
+    const result = validateStoredData(data);
+    return result.ok ? [] : result.errors;
+  };
+
+  it('la versión actual del esquema es la 2', () => {
+    expect(SCHEMA_VERSION).toBe(2);
+  });
+
+  it('valida unos datos v2 con varios tableros', () => {
+    const result = validateStoredData(v2([entry('b-1', 'Uno'), entry('b-2', 'Dos')], 'b-2'));
+    expect(result.ok).toBe(true);
+    expect(validateStoredData(createSeedData()).ok).toBe(true);
+  });
+
+  it('rechaza datos v2 incoherentes', () => {
+    expect(errorsV2(v2([entry('b-1'), entry('b-1')])).join(' ')).toMatch(/b-1.*repetido/);
+    expect(errorsV2(v2([])).join(' ')).toContain('Tiene que haber al menos un tablero');
+    expect(errorsV2(v2([entry('b-1'), entry('b-2')], 'b-9')).join(' ')).toContain('El tablero abierto no existe: b-9');
+    expect(errorsV2(v2('nada')).join(' ')).toContain('no son una lista');
+    expect(errorsV2(v2([{ ...entry('b-1'), id: '' }])).join(' ')).toContain('no tiene id');
+    expect(errorsV2({ version: 1, boards: [entry('b-1')], activeBoardId: 'b-1' })).toEqual([
+      expect.stringContaining('versión'),
+    ]);
+  });
+
+  it('revisa el contenido de cada tablero y dice cuál falla', () => {
+    const roto = entry('b-2');
+    roto.columns[1]!.cardIds.push('fantasma');
+    const errors = errorsV2(v2([entry('b-1'), roto])).join(' ');
+    expect(errors).toContain('b-2');
+    expect(errors).toContain('fantasma');
   });
 });

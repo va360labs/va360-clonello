@@ -1,5 +1,5 @@
 import { createId } from './ids';
-import type { BoardAction } from './reducer';
+import { STARTER_COLUMN_TITLES, type BoardAction, type WorkspaceAction } from './reducer';
 import type { LabelColor } from './types';
 
 /**
@@ -24,4 +24,12 @@ export const addLabel = (name: string, color: LabelColor): BoardAction => ({
   id: createId('label'),
   name,
   color,
+});
+
+/** Tablero nuevo con sus columnas iniciales (ver STARTER_COLUMN_TITLES). */
+export const createBoard = (title: string): WorkspaceAction => ({
+  type: 'board/create',
+  id: createId('board'),
+  title,
+  columnIds: STARTER_COLUMN_TITLES.map(() => createId('col')),
 });

@@ -1,31 +1,75 @@
-import { LABEL_COLORS, type Board } from './types';
+import { LABEL_COLORS, type Board, type Workspace } from './types';
 
 /** Versión del esquema guardado. Cambiarla exige migración (docs/memoria.md). */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
-/** Lo que se guarda en localStorage: el tablero dentro de un sobre con versión. */
-export interface StoredData {
-  version: typeof SCHEMA_VERSION;
+/** Formato de la versión 1 (clave clonello:v1): un único tablero. Se lee para migrar. */
+export interface StoredDataV1 {
+  version: 1;
   board: Board;
 }
 
-export type ValidationResult = { ok: true; data: StoredData } | { ok: false; errors: string[] };
+/** Lo que se guarda en localStorage: todos los tableros dentro de un sobre con versión. */
+export interface StoredData extends Workspace {
+  version: typeof SCHEMA_VERSION;
+}
+
+export type ValidationResult<T> = { ok: true; data: T } | { ok: false; errors: string[] };
 
 /**
  * Valida a mano (sin dependencias) que un valor leído de localStorage cumple el
- * esquema, incluida la coherencia entre columnas, tarjetas y etiquetas.
+ * esquema v2: la lista de tableros, que no esté vacía, ids únicos, que el
+ * tablero abierto exista y que cada tablero sea coherente por dentro.
  * Los mensajes de error están en español porque pueden acabar en pantalla.
  */
-export function validateStoredData(data: unknown): ValidationResult {
+export function validateStoredData(data: unknown): ValidationResult<StoredData> {
   if (!isObject(data)) return fail('Los datos guardados no son un objeto.');
   if (data.version !== SCHEMA_VERSION) {
     return fail(`La versión del esquema es ${String(data.version)} y se esperaba ${SCHEMA_VERSION}.`);
   }
-  if (!isObject(data.board)) return fail('Falta el tablero.');
+  if (!Array.isArray(data.boards)) return fail('Los tableros no son una lista.');
+  if (data.boards.length === 0) return fail('Tiene que haber al menos un tablero.');
 
-  const board = data.board;
   const errors: string[] = [];
+  const boardIds = new Set<string>();
+  data.boards.forEach((board: unknown, i) => {
+    if (!isObject(board) || !isNonEmptyString(board.id)) {
+      errors.push(`El tablero ${i} no tiene id.`);
+      return;
+    }
+    if (boardIds.has(board.id)) errors.push(`El tablero ${board.id} está repetido.`);
+    boardIds.add(board.id);
+    for (const error of validateBoard(board)) errors.push(`Tablero ${board.id}: ${error}`);
+  });
 
+  if (!isNonEmptyString(data.activeBoardId)) {
+    errors.push('No se sabe qué tablero estaba abierto.');
+  } else if (!boardIds.has(data.activeBoardId)) {
+    errors.push(`El tablero abierto no existe: ${data.activeBoardId}.`);
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+  return { ok: true, data: data as unknown as StoredData };
+}
+
+/**
+ * Validador de la versión 1. Se conserva para leer clonello:v1 y migrarlo
+ * (ver migrate.ts). No lo cambies: describe datos que ya están en navegadores.
+ */
+export function validateStoredDataV1(data: unknown): ValidationResult<StoredDataV1> {
+  if (!isObject(data)) return fail('Los datos guardados no son un objeto.');
+  if (data.version !== 1) {
+    return fail(`La versión del esquema es ${String(data.version)} y se esperaba 1.`);
+  }
+  if (!isObject(data.board)) return fail('Falta el tablero.');
+  const errors = validateBoard(data.board);
+  if (errors.length > 0) return { ok: false, errors };
+  return { ok: true, data: data as unknown as StoredDataV1 };
+}
+
+/** Coherencia de un tablero por dentro: columnas, tarjetas y etiquetas. Igual en v1 y v2. */
+function validateBoard(board: Record<string, unknown>): string[] {
+  const errors: string[] = [];
   if (typeof board.title !== 'string') errors.push('El tablero no tiene un título de texto.');
 
   // Etiquetas
@@ -101,11 +145,10 @@ export function validateStoredData(data: unknown): ValidationResult {
     }
   }
 
-  if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, data: data as unknown as StoredData };
+  return errors;
 }
 
-function fail(message: string): ValidationResult {
+function fail(message: string): { ok: false; errors: string[] } {
   return { ok: false, errors: [message] };
 }
 

@@ -1,6 +1,6 @@
 # VA360 - Clonello
 
-Clonello es un tablero de tareas tipo kanban hecho por VA360 como app de demo. Tiene columnas que se crean, renombran, reordenan y borran, y tarjetas con título, descripción y etiquetas de color que se arrastran de una columna a otra. Al hacer clic en una tarjeta se abre su detalle.
+Clonello es un tablero de tareas tipo kanban hecho por VA360 como app de demo. Tiene columnas que se crean, renombran, reordenan y borran, y tarjetas con título, descripción y etiquetas de color que se arrastran de una columna a otra. Al hacer clic en una tarjeta se abre su detalle. Puedes tener varios tableros y pasar de uno a otro con el botón «Tableros», junto al título.
 
 Funciona entero en el navegador: no hay servidor ni cuentas. Lo que cambias se guarda en tu navegador y la primera vez aparece un tablero de ejemplo, el lanzamiento de la web de una agencia de viajes inventada.
 
