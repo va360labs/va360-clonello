@@ -1,0 +1,184 @@
+/* Calles abiertas separadas por un filete, sin cajas de fondo */
+.column {
+  display: flex;
+  flex: 0 0 var(--column-width);
+  flex-direction: column;
+  width: var(--column-width);
+  min-height: 0;
+  padding: 0 var(--lane-pad);
+  border-right: 1px solid var(--line);
+  scroll-snap-align: start;
+}
+
+.column--placeholder {
+  opacity: 0.35;
+}
+
+.column--overlay {
+  padding: 0.75rem 1rem 1rem;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: var(--shadow-lift), 0 0 0 2px var(--gold);
+  cursor: grabbing;
+}
+
+.column__head {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  min-height: 2.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.column__title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-md);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.column__title-btn {
+  display: block;
+  width: 100%;
+  margin-left: -0.4rem;
+  padding: 0.3rem 0.4rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  font-weight: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button.column__title-btn {
+  cursor: text;
+}
+
+button.column__title-btn:hover {
+  background: var(--surface-sunken);
+}
+
+.column__rename {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-md);
+  font-weight: 650;
+}
+
+.column__grip {
+  color: var(--line-strong);
+  cursor: grab;
+  touch-action: none;
+}
+
+.column__grip:active {
+  cursor: grabbing;
+}
+
+/* El hueco de 3px deja ver el anillo de foco dentro de una lista con scroll */
+.column__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin: -3px;
+  padding: 3px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.column__empty {
+  padding: 1.25rem 0.75rem;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+
+.column__add {
+  justify-content: flex-start;
+  width: calc(100% + 0.8rem);
+  margin: 0.6rem -0.4rem 0;
+  padding: 0 0.4rem;
+}
+
+/* Formularios en línea (nueva tarjeta, nueva columna) */
+.add-form {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+}
+
+.add-form__actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* Menú de opciones de columna */
+.menu {
+  position: relative;
+}
+
+.menu__panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  width: 15.5rem;
+  padding: 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-lift);
+}
+
+.menu__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menu__item {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  text-align: left;
+}
+
+.menu__item:hover:not(:disabled) {
+  background: var(--surface-sunken);
+}
+
+.menu__item:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.menu__item--danger {
+  color: var(--danger);
+}
+
+.menu__confirm {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.6rem;
+}
+
+.menu__hint {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+.menu__confirm-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}

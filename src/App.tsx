@@ -1,3 +1,38 @@
-export function App() {
-  return <h1>Clonello</h1>;
+import { useState } from 'react';
+import type { StorageLike } from './board/storage';
+import { BoardView } from './components/BoardView';
+import { Header } from './components/Header';
+import { BoardProvider, useBoard } from './state/BoardProvider';
+import './App.css';
+
+export function App({ storage }: { storage?: StorageLike | null }) {
+  return (
+    <BoardProvider storage={storage}>
+      <div className="app">
+        <Header />
+        <main className="app__main">
+          <RecoveryNotice />
+          <BoardView />
+        </main>
+      </div>
+    </BoardProvider>
+  );
+}
+
+/** Aviso si lo guardado en el navegador no se pudo leer y se cargaron los datos de ejemplo. */
+function RecoveryNotice() {
+  const { loadResult } = useBoard();
+  const [visible, setVisible] = useState(loadResult.origin === 'recovered');
+  if (!visible) return null;
+  return (
+    <div className="notice" role="status">
+      <p>
+        No se pudieron leer los datos guardados en este navegador, así que se han cargado los de ejemplo. Lo
+        anterior queda copiado aparte por si hiciera falta recuperarlo.
+      </p>
+      <button type="button" className="btn btn--ghost" onClick={() => setVisible(false)}>
+        Entendido
+      </button>
+    </div>
+  );
 }

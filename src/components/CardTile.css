@@ -1,0 +1,62 @@
+.column__item {
+  list-style: none;
+}
+
+.card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.8rem 0.9rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  cursor: grab;
+  touch-action: manipulation;
+  user-select: none;
+  transition: border-color 0.15s ease;
+}
+
+.card:hover {
+  border-color: var(--line-strong);
+}
+
+.card__labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.card__title {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.card__desc {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+
+/* Hueco que deja la tarjeta mientras se arrastra */
+.card--placeholder {
+  border: 1.5px dashed var(--line-strong);
+  background: var(--surface-sunken);
+}
+
+.card--placeholder > * {
+  visibility: hidden;
+}
+
+/* La tarjeta que se levanta: el único momento en que el dorado se ve grande */
+.card--overlay {
+  cursor: grabbing;
+  border-color: var(--gold);
+  box-shadow: var(--shadow-lift), 0 0 0 2px var(--gold);
+  transform: rotate(-2.5deg);
+}
