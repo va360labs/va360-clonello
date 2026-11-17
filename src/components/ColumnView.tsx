@@ -56,6 +56,7 @@ export function ColumnView({ column, index, total, onOpenCard }: ColumnViewProps
             </button>
           </h2>
         )}
+        <CardCount count={column.cardIds.length} />
         <button
           ref={setActivatorNodeRef}
           type="button"
@@ -87,6 +88,16 @@ export function ColumnView({ column, index, total, onOpenCard }: ColumnViewProps
   );
 }
 
+/** Número de tarjetas junto al nombre. Fuera del título para no cambiar el nombre de la columna. */
+function CardCount({ count }: { count: number }) {
+  return (
+    <span className="column__count">
+      <span aria-hidden="true">{count}</span>
+      <span className="visually-hidden">{count === 1 ? '1 tarjeta' : `${count} tarjetas`}</span>
+    </span>
+  );
+}
+
 /** Campo para renombrar. Intro o salir del campo guarda; Escape cancela (devuelve null). */
 function RenameInput({ initial, onDone }: { initial: string; onDone: (title: string | null) => void }) {
   const [value, setValue] = useState(initial);
@@ -115,6 +126,7 @@ export function ColumnPreview({ column, cards, labels }: { column: Column; cards
         <h2 className="column__title">
           <span className="column__title-btn">{column.title}</span>
         </h2>
+        <CardCount count={column.cardIds.length} />
       </header>
       <ol className="column__cards">
         {column.cardIds.map((id) => {
