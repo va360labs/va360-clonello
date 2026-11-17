@@ -82,6 +82,7 @@ src/
   - fondo claro frío `#EDEFF3`, superficies blancas y texto `#1B1D2A`.
 - El dorado nunca va como texto sobre fondo claro (no tiene contraste). Sobre dorado, el texto es navy.
 - Tipografía Inter variable, autoalojada con `@fontsource-variable/inter`. Sin peticiones a Google Fonts.
+- Ratón encima de una tarjeta: borde `--line-strong` y sombra suave `--shadow-hover` (más ligera que `--shadow-lift`), sin dorado ni desplazamiento. La sombra solo con `@media (hover: hover)` y nunca en el hueco (`.card--placeholder`) ni en la tarjeta que vuela (`.card--overlay`). Con foco de teclado se combina con `--focus-ring` para que el anillo dorado no se pierda.
 - Diseño propio: columnas como calles abiertas separadas por un filete, sin cajas grises; etiquetas con punto de color y fondo teñido.
 - Escritorio de referencia: 1920×1080. En móvil (menos de 720 px) las columnas ocupan casi todo el ancho y se desplazan con imán.
 
@@ -114,3 +115,4 @@ Se dejó fuera a propósito: fechas límite, búsqueda y filtros, modo oscuro, e
 | Fecha | Decisión |
 | --- | --- |
 | 2026-11-17 | Versión base: sin backend, `localStorage` versionado (`clonello:v1`), modelo normalizado, reducer puro, @dnd-kit, CSS plano con tokens VA360, Vitest + Testing Library y despliegue en GitHub Pages. |
+| 2026-11-17 | Encargo #1: sombra suave `--shadow-hover` al pasar el ratón por una tarjeta, solo en dispositivos con ratón (en táctil el hover se queda pegado), sin moverla para no empujar a las demás y conservando el anillo de foco. Sin prueba en Vitest: jsdom no aplica `:hover` ni pinta sombras y la interfaz no se prueba por clases CSS; se revisa a mano en navegador. |
