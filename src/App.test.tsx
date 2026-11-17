@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from './App';
@@ -202,6 +202,68 @@ describe('App', () => {
       render(<App storage={null} />);
       await user.click(within(banner()).getByRole('button', { name: 'Activar modo oscuro' }));
       expect(temaDelHtml()).toBe('oscuro');
+    });
+  });
+
+  describe('exportar el tablero', () => {
+    const banner = () => screen.getAllByRole('banner')[0]!;
+
+    /** jsdom no trae URL.createObjectURL: se simula y se guarda lo que se descarga. */
+    function simularDescarga() {
+      const blobs: Blob[] = [];
+      const nombres: string[] = [];
+      URL.createObjectURL = vi.fn((blob: Blob) => {
+        blobs.push(blob);
+        return 'blob:clonello/prueba';
+      });
+      URL.revokeObjectURL = vi.fn();
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+        nombres.push(this.download);
+      });
+      return { blobs, nombres };
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('hay un botón para exportar el tablero', () => {
+      render(<App />);
+      expect(within(banner()).getByRole('button', { name: 'Exportar tablero' })).toBeInTheDocument();
+    });
+
+    it('al pulsarlo descarga un CSV con el tablero', async () => {
+      const user = userEvent.setup();
+      const { blobs, nombres } = simularDescarga();
+      render(<App />);
+      const hecho = column('Hecho');
+      await user.click(within(hecho).getByRole('button', { name: 'Añadir tarjeta' }));
+      await user.type(within(hecho).getByRole('textbox', { name: /nueva tarjeta/ }), 'Publicar la web{Enter}');
+
+      await user.click(within(banner()).getByRole('button', { name: 'Exportar tablero' }));
+
+      expect(blobs).toHaveLength(1);
+      expect(nombres).toEqual(['clonello-tablero.csv']);
+      const blob = blobs[0]!;
+      expect(blob.type).toMatch(/^text\/csv/);
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+      const texto = new TextDecoder().decode(bytes);
+      expect(texto).toContain('Columna;Posición;Título;Descripción;Etiquetas');
+      expect(texto).toContain('Formulario de contacto');
+      expect(texto).toContain('Elegir el alojamiento');
+      expect(texto).toContain('Hecho;4;Publicar la web');
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:clonello/prueba');
+    });
+
+    it('exportar no toca lo guardado', async () => {
+      const user = userEvent.setup();
+      simularDescarga();
+      render(<App />);
+      const antes = window.localStorage.getItem(STORAGE_KEY);
+      expect(antes).not.toBeNull();
+      await user.click(within(banner()).getByRole('button', { name: 'Exportar tablero' }));
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBe(antes);
     });
   });
 });

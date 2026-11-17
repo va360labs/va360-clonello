@@ -1,6 +1,9 @@
 import logo from '../assets/logo-va360.png';
+import { boardCsvFile } from '../board/export';
+import type { Board } from '../board/types';
 import type { Theme } from '../preferencias/tema';
-import { MoonIcon, SunIcon } from './icons';
+import { useBoard } from '../state/BoardProvider';
+import { DownloadIcon, MoonIcon, SunIcon } from './icons';
 import './Header.css';
 
 interface HeaderProps {
@@ -10,6 +13,7 @@ interface HeaderProps {
 
 export function Header({ theme, onToggleTheme }: HeaderProps) {
   const dark = theme === 'oscuro';
+  const { board } = useBoard();
   return (
     <header className="header">
       <div className="header__brand">
@@ -19,6 +23,16 @@ export function Header({ theme, onToggleTheme }: HeaderProps) {
       </div>
       <div className="header__actions">
         <p className="header__note">Los cambios se guardan en este navegador</p>
+        <button
+          type="button"
+          className="header__export"
+          onClick={() => downloadBoardCsv(board)}
+          aria-label="Exportar tablero"
+          title="Descargar las tarjetas en un archivo para Excel"
+        >
+          <DownloadIcon />
+          <span className="header__export-text">Exportar tablero</span>
+        </button>
         <button
           type="button"
           className="header__theme"
@@ -31,4 +45,17 @@ export function Header({ theme, onToggleTheme }: HeaderProps) {
       </div>
     </header>
   );
+}
+
+/** Descarga el tablero como CSV en el propio navegador, sin enviar nada a ningún servidor. */
+function downloadBoardCsv(board: Board) {
+  const file = boardCsvFile(board);
+  const url = URL.createObjectURL(new Blob([file.content], { type: file.type }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = file.name;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }

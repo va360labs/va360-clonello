@@ -123,9 +123,19 @@ Una preferencia visual se aplica antes del primer pintado (un script corto en `i
 - La cabecera sigue navy en los dos temas; en oscuro se separa del fondo con un filete (`--header-line`). El dorado sigue igual y sobre él el texto sigue siendo navy. `<meta name="theme-color">` no cambia: la cabecera es navy en ambos.
 - Los colores sueltos que quedaban en los `.css` pasaron a tokens (`--text-on-danger`, `--text-on-label`, `--backdrop`, `--header-divider`, `--line-bold`). Las etiquetas tiñen su fondo mezclando su color con `--surface` (`--label-tint`, más intenso en oscuro); sus tonos (`LABEL_HEX`) no cambian porque son datos y se leen bien sobre los dos fondos.
 
+## Exportar a CSV
+
+- Botón «Exportar tablero» en la cabecera, junto al del tema. Descarga `clonello-tablero.csv` en el propio navegador (`Blob` + `URL.createObjectURL`), sin servidor.
+- La conversión es pura y está en `src/board/export.ts` (`boardToCsv`, `boardCsvFile`). Exportar solo lee: no hay acción en el reducer ni se toca `localStorage` ni el esquema.
+- Columnas del archivo: Columna, Posición (1, 2, 3… dentro de la columna), Título, Descripción, Etiquetas (nombres separados por «, »). Una fila por tarjeta, en el orden de `columns` y `cardIds`. Las columnas sin tarjetas no aparecen.
+- Separador punto y coma, fin de línea CRLF y marca BOM UTF-8: es lo que espera Excel en español para separar celdas y leer tildes y ñ; LibreOffice lo detecta igual.
+- Escapado RFC 4180: se entrecomilla el texto con `;`, `,`, comillas o saltos de línea, y las comillas se duplican.
+- Contra fórmulas: cualquier celda que empiece por `=`, `+`, `-`, `@`, tabulador o retorno de carro lleva delante un apóstrofo (`'`). Se ve el apóstrofo, pero Excel no ejecuta nada.
+- Es para leer en una hoja de cálculo, **no es una copia de seguridad**: no lleva ids ni colores y no se puede importar.
+
 ## Lo que la app no hace todavía
 
-Se dejó fuera a propósito: fechas límite, búsqueda y filtros, exportar e importar, checklists, asignar personas, varios tableros, compartir y permisos, historial de actividad y deshacer.
+Se dejó fuera a propósito: fechas límite, búsqueda y filtros, importar (y una copia completa en JSON para restaurar), checklists, asignar personas, varios tableros, compartir y permisos, historial de actividad y deshacer.
 
 ## Registro de decisiones
 
@@ -135,3 +145,4 @@ Se dejó fuera a propósito: fechas límite, búsqueda y filtros, exportar e imp
 | 2026-11-17 | Encargo #1: sombra suave `--shadow-hover` al pasar el ratón por una tarjeta, solo en dispositivos con ratón (en táctil el hover se queda pegado), sin moverla para no empujar a las demás y conservando el anillo de foco. Sin prueba en Vitest: jsdom no aplica `:hover` ni pinta sombras y la interfaz no se prueba por clases CSS; se revisa a mano en navegador. |
 | 2026-11-17 | Preferencias de la interfaz fuera de los datos del tablero: módulo y clave propios, nunca en `storage.ts`, y aplicadas antes del primer pintado. Se decide al revisar la PR #5, que guardaba el tema en `storage.ts` y por eso pasaba a riesgo alto. |
 | 2026-11-17 | Encargo #6: modo oscuro. Botón en la cabecera, tokens oscuros en `tokens.css` bajo `data-tema="oscuro"`, preferencia en `src/preferencias/` con clave `clonello:preferencias` (excepción explícita a la regla de `localStorage`) y script en `index.html` para no destellar. Empieza siempre en claro y solo hay dos opciones. Colores sueltos pasados a tokens. Sin tocar `src/board/`. |
+| 2026-11-17 | Encargo #13: exportar el tablero a CSV desde la cabecera. Función pura en `src/board/export.ts`; separador `;`, CRLF y BOM UTF-8 para Excel en español; columnas Columna, Posición, Título, Descripción, Etiquetas; columnas vacías omitidas; apóstrofo delante de `=`, `+`, `-`, `@`, tabulador y retorno para que no se ejecuten fórmulas; nombre fijo `clonello-tablero.csv`. Sin reducer, sin `localStorage` y sin tocar el esquema. Importar y copia JSON quedan fuera. |

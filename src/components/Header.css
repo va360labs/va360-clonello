@@ -16,6 +16,26 @@
   gap: 1rem;
 }
 
+/* Botón de exportar: mismo aspecto discreto que el de tema. */
+.header__export {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--header-divider);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-on-navy-muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+
+.header__export:hover {
+  background: var(--navy-soft);
+  color: var(--text-on-navy);
+}
+
 /* Botón de tema: discreto sobre el navy; el dorado solo aparece en el foco. */
 .header__theme {
   display: inline-grid;
@@ -70,6 +90,17 @@
   }
 
   .header__note {
+    display: none;
+  }
+
+  /* En móvil solo el icono; el nombre accesible sigue en aria-label. */
+  .header__export {
+    width: 2.25rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .header__export-text {
     display: none;
   }
 }
