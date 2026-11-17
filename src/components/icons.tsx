@@ -83,10 +83,3 @@ export const UploadIcon = (p: IconProps) => (
     <path d="M12 15V4M7 9l5-5 5 5M5 15v4a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4" />
   </Icon>
 );
-
-export const SearchIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <circle cx="11" cy="11" r="6.5" />
-    <path d="m16 16 4.5 4.5" />
-  </Icon>
-);
