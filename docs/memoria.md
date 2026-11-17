@@ -106,6 +106,12 @@ src/
 - En push a `main`, además, despliega `dist/` en GitHub Pages con `actions/deploy-pages`.
 - Vite usa `base: '/va360-clonello/'`. URL publicada: https://va360labs.github.io/va360-clonello/
 
+## Preferencias de la interfaz
+
+Las preferencias de quien usa la app (por ejemplo, el tema claro u oscuro) **no son datos del tablero**. Se guardan en su propio módulo (`src/preferencias/`) y en su propia clave de `localStorage`, sin tocar `src/board/storage.ts`, `schema.ts` ni `types.ts`: así un cambio de aspecto nunca se convierte en un cambio del formato de los datos guardados.
+
+Una preferencia visual se aplica antes del primer pintado (un script corto en `index.html`), para que la página no destelle con el tema equivocado al cargar.
+
 ## Lo que la app no hace todavía
 
 Se dejó fuera a propósito: fechas límite, búsqueda y filtros, modo oscuro, exportar e importar, checklists, asignar personas, varios tableros, compartir y permisos, historial de actividad y deshacer.
@@ -116,3 +122,4 @@ Se dejó fuera a propósito: fechas límite, búsqueda y filtros, modo oscuro, e
 | --- | --- |
 | 2026-11-17 | Versión base: sin backend, `localStorage` versionado (`clonello:v1`), modelo normalizado, reducer puro, @dnd-kit, CSS plano con tokens VA360, Vitest + Testing Library y despliegue en GitHub Pages. |
 | 2026-11-17 | Encargo #1: sombra suave `--shadow-hover` al pasar el ratón por una tarjeta, solo en dispositivos con ratón (en táctil el hover se queda pegado), sin moverla para no empujar a las demás y conservando el anillo de foco. Sin prueba en Vitest: jsdom no aplica `:hover` ni pinta sombras y la interfaz no se prueba por clases CSS; se revisa a mano en navegador. |
+| 2026-11-17 | Preferencias de la interfaz fuera de los datos del tablero: módulo y clave propios, nunca en `storage.ts`, y aplicadas antes del primer pintado. Se decide al revisar la PR #5, que guardaba el tema en `storage.ts` y por eso pasaba a riesgo alto. |
