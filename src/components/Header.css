@@ -29,6 +29,21 @@
   color: var(--text-on-navy-muted);
 }
 
+.header__export {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 2.25rem;
+  padding: 0 0.8rem;
+  border: 1px solid var(--header-divider);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-on-navy-muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+
+.header__export:hover,
 .header__theme:hover {
   background: var(--navy-soft);
   color: var(--text-on-navy);
@@ -71,5 +86,21 @@
 
   .header__note {
     display: none;
+  }
+
+  /* En móvil solo el icono; el texto sigue ahí para el lector de pantalla. */
+  .header__export {
+    width: 2.25rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .header__export-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
