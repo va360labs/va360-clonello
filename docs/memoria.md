@@ -84,7 +84,14 @@ src/
 - Tipografía Inter variable, autoalojada con `@fontsource-variable/inter`. Sin peticiones a Google Fonts.
 - Ratón encima de una tarjeta: borde `--line-strong` y sombra suave `--shadow-hover` (más ligera que `--shadow-lift`), sin dorado ni desplazamiento. La sombra solo con `@media (hover: hover)` y nunca en el hueco (`.card--placeholder`) ni en la tarjeta que vuela (`.card--overlay`). Con foco de teclado se combina con `--focus-ring` para que el anillo dorado no se pierda.
 - Diseño propio: columnas como calles abiertas separadas por un filete, sin cajas grises; etiquetas con punto de color y fondo teñido.
+- Modo oscuro (encargo #4): `data-theme="dark"` en `<html>` redefine los tokens en `tokens.css`; los componentes no saben de temas. Fondos azul noche derivados del navy (`--bg #10101c`, `--surface #1c1c2e`), texto `#e8e9f1` (13,8:1 sobre superficie) y secundario `#a9acbf` (7,4:1). La cabecera sigue navy y el dorado sigue siendo el único acento. Los colores que estaban sueltos en componentes ahora son tokens (`--backdrop`, `--label-tint-base`, `--label-tint`, `--text-on-danger`, `--text-on-label`, `--line-on-navy`, `--line-emphasis`); en claro valen lo mismo que antes. Las etiquetas mantienen sus tonos y se tiñen sobre la superficie oscura al 24 %.
 - Escritorio de referencia: 1920×1080. En móvil (menos de 720 px) las columnas ocupan casi todo el ancho y se desplazan con imán.
+
+## Preferencia de tema
+
+- Clave `clonello:tema` en `src/board/storage.ts` (`loadTheme`/`saveTheme`), con valor `light` o `dark`. Va aparte del tablero: no es parte del esquema versionado, no hay migración y nunca toca `clonello:v1`.
+- Sin nada guardado (o con un valor raro) se sigue `prefers-color-scheme` del sistema. Solo se guarda cuando la persona pulsa el botón; desde entonces manda lo elegido.
+- Un solo botón «Modo oscuro» con `aria-pressed` en la cabecera (`useTheme` en `src/state/useTheme.ts`). No hay tercera opción «como el sistema».
 
 ## Cómo se prueban las cosas
 
@@ -108,7 +115,7 @@ src/
 
 ## Lo que la app no hace todavía
 
-Se dejó fuera a propósito: fechas límite, búsqueda y filtros, modo oscuro, exportar e importar, checklists, asignar personas, varios tableros, compartir y permisos, historial de actividad y deshacer.
+Se dejó fuera a propósito: fechas límite, búsqueda y filtros, exportar e importar, checklists, asignar personas, varios tableros, compartir y permisos, historial de actividad y deshacer.
 
 ## Registro de decisiones
 
@@ -116,3 +123,4 @@ Se dejó fuera a propósito: fechas límite, búsqueda y filtros, modo oscuro, e
 | --- | --- |
 | 2026-11-17 | Versión base: sin backend, `localStorage` versionado (`clonello:v1`), modelo normalizado, reducer puro, @dnd-kit, CSS plano con tokens VA360, Vitest + Testing Library y despliegue en GitHub Pages. |
 | 2026-11-17 | Encargo #1: sombra suave `--shadow-hover` al pasar el ratón por una tarjeta, solo en dispositivos con ratón (en táctil el hover se queda pegado), sin moverla para no empujar a las demás y conservando el anillo de foco. Sin prueba en Vitest: jsdom no aplica `:hover` ni pinta sombras y la interfaz no se prueba por clases CSS; se revisa a mano en navegador. |
+| 2026-11-17 | Encargo #4: modo oscuro con un botón «Modo oscuro» (`aria-pressed`) en la cabecera. Paleta oscura como redefinición de tokens bajo `data-theme="dark"`, para que el modo claro quede idéntico. Preferencia en una clave nueva `clonello:tema`, separada del tablero para no tocar su esquema ni migrar. Primera visita: se respeta el ajuste del sistema; sin opción «como el sistema» aparte, por simplicidad. Cabecera navy en ambos modos (es la marca). Los colores sueltos de los componentes pasan a tokens. |

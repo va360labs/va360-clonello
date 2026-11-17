@@ -25,13 +25,55 @@
 .header__divider {
   width: 1px;
   height: 22px;
-  background: rgba(255, 255, 255, 0.28);
+  background: var(--line-on-navy);
 }
 
 .header__product {
   font-size: 1.1875rem;
   font-weight: 600;
   letter-spacing: -0.01em;
+}
+
+.header__end {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header__theme {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.25rem;
+  padding: 0 0.8rem;
+  border: 1px solid var(--line-on-navy);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-on-navy-muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+
+.header__theme:hover {
+  background: var(--navy-soft);
+  color: var(--text-on-navy);
+}
+
+/* Activado: relleno dorado, como el resto de lo interactivo que está «encendido». */
+.header__theme[aria-pressed='true'] {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: var(--navy);
+}
+
+.header__theme[aria-pressed='true']:hover {
+  border-color: var(--gold-strong);
+  background: var(--gold-strong);
+}
+
+/* Sobre dorado el anillo dorado no se vería: se separa con un hueco navy. */
+.header__theme:focus-visible {
+  box-shadow: 0 0 0 2px var(--navy), 0 0 0 4px var(--gold);
 }
 
 .header__note {
@@ -46,5 +88,21 @@
 
   .header__note {
     display: none;
+  }
+
+  /* En móvil solo el icono; el nombre sigue ahí para el lector de pantalla. */
+  .header__theme {
+    width: 2.25rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .header__theme-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
   }
 }

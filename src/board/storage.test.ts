@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { BACKUP_KEY, STORAGE_KEY, loadBoard, saveBoard, type StorageLike } from './storage';
+import {
+  BACKUP_KEY,
+  STORAGE_KEY,
+  THEME_KEY,
+  loadBoard,
+  loadTheme,
+  saveBoard,
+  saveTheme,
+  type StorageLike,
+} from './storage';
 import { createSeedBoard } from './seed';
 
 /** localStorage en memoria para probar sin depender del navegador. */
@@ -76,5 +85,53 @@ describe('guardar', () => {
     const board = { ...createSeedBoard(), title: 'Ida y vuelta' };
     expect(saveBoard(storage, board)).toBe(true);
     expect(loadBoard(storage)).toEqual({ board, origin: 'stored', problems: [] });
+  });
+});
+
+describe('tema claro u oscuro', () => {
+  it('guarda el tema en su propia clave y se puede volver a leer', () => {
+    const storage = memoryStorage();
+    expect(saveTheme(storage, 'dark')).toBe(true);
+    expect(storage.data[THEME_KEY]).toBe('dark');
+    expect(loadTheme(storage)).toBe('dark');
+    saveTheme(storage, 'light');
+    expect(loadTheme(storage, true)).toBe('light');
+  });
+
+  it('sin tema guardado usa el del sistema y, si no hay, el claro', () => {
+    expect(loadTheme(memoryStorage())).toBe('light');
+    expect(loadTheme(memoryStorage(), true)).toBe('dark');
+  });
+
+  it('un valor raro devuelve el tema por defecto', () => {
+    expect(loadTheme(memoryStorage({ [THEME_KEY]: 'morado' }))).toBe('light');
+    expect(loadTheme(memoryStorage({ [THEME_KEY]: '{"x":1}' }), true)).toBe('dark');
+  });
+
+  it('funciona sin localStorage o si el almacenamiento lanza errores', () => {
+    expect(loadTheme(null)).toBe('light');
+    expect(saveTheme(null, 'dark')).toBe(false);
+    const broken: StorageLike = {
+      getItem: () => {
+        throw new Error('bloqueado');
+      },
+      setItem: () => {
+        throw new Error('cuota llena');
+      },
+    };
+    expect(loadTheme(broken, true)).toBe('dark');
+    expect(saveTheme(broken, 'dark')).toBe(false);
+  });
+
+  it('cambiar el tema no toca el tablero guardado', () => {
+    const storage = memoryStorage();
+    const board = { ...createSeedBoard(), title: 'Mi tablero' };
+    saveBoard(storage, board);
+    const before = storage.data[STORAGE_KEY];
+    saveTheme(storage, 'dark');
+    saveTheme(storage, 'light');
+    expect(THEME_KEY).not.toBe(STORAGE_KEY);
+    expect(storage.data[STORAGE_KEY]).toBe(before);
+    expect(loadBoard(storage).board.title).toBe('Mi tablero');
   });
 });

@@ -56,7 +56,7 @@
 }
 
 .new-column__button:hover {
-  border-color: var(--navy);
+  border-color: var(--line-emphasis);
   color: var(--text);
 }
 

@@ -21,6 +21,19 @@
   --danger: #b42318;
   --danger-tint: #fdecea;
 
+  /* Antes eran colores sueltos en los componentes. */
+  --text-on-danger: #ffffff;
+  --text-on-label: #ffffff;
+  --line-on-navy: rgb(255 255 255 / 0.28);
+  --line-emphasis: var(--navy);
+  --backdrop: rgb(26 26 46 / 0.55);
+  /* Fondo teñido de las etiquetas: su color mezclado con esta base. */
+  --label-tint-base: #ffffff;
+  --label-tint: 13%;
+  --label-tint-border: 55%;
+
+  color-scheme: light;
+
   --font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   --fs-xs: 0.8125rem; /* 13px */
@@ -42,6 +55,37 @@
   --shadow-lift: 0 18px 40px -12px rgb(26 26 46 / 0.35), 0 4px 10px rgb(26 26 46 / 0.12);
   --shadow-modal: 0 30px 80px -20px rgb(26 26 46 / 0.45);
   --focus-ring: 0 0 0 3px var(--gold);
+}
+
+/* Modo oscuro: fondos azul noche derivados del navy y texto claro.
+   La cabecera sigue en navy y el dorado sigue siendo el único acento. */
+:root[data-theme='dark'] {
+  --gold-tint: #4a3f17;
+
+  --bg: #10101c;
+  --surface: #1c1c2e;
+  --surface-sunken: #272740;
+  --line: #34344e;
+  --line-strong: #5a5e78;
+
+  --text: #e8e9f1;
+  --text-muted: #a9acbf;
+
+  --danger: #f2746a;
+  --danger-tint: #3b1f25;
+  --text-on-danger: #1a1a2e;
+
+  --line-emphasis: #c9ccda;
+  --backdrop: rgb(4 4 10 / 0.7);
+  --label-tint-base: var(--surface);
+  --label-tint: 24%;
+  --label-tint-border: 70%;
+
+  --shadow-hover: 0 6px 16px -6px rgb(0 0 0 / 0.6), 0 1px 3px rgb(0 0 0 / 0.4);
+  --shadow-lift: 0 18px 40px -12px rgb(0 0 0 / 0.7), 0 4px 10px rgb(0 0 0 / 0.45);
+  --shadow-modal: 0 30px 80px -20px rgb(0 0 0 / 0.8);
+
+  color-scheme: dark;
 }
 
 @media (max-width: 720px) {

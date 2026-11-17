@@ -3,13 +3,15 @@ import type { StorageLike } from './board/storage';
 import { BoardView } from './components/BoardView';
 import { Header } from './components/Header';
 import { BoardProvider, useBoard } from './state/BoardProvider';
+import { useTheme } from './state/useTheme';
 import './App.css';
 
 export function App({ storage }: { storage?: StorageLike | null }) {
+  const { theme, toggleTheme } = useTheme(storage);
   return (
     <BoardProvider storage={storage}>
       <div className="app">
-        <Header />
+        <Header darkMode={theme === 'dark'} onToggleDarkMode={toggleTheme} />
         <main className="app__main">
           <RecoveryNotice />
           <BoardView />

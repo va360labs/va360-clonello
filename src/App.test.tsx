@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from './App';
-import { STORAGE_KEY } from './board/storage';
+import { STORAGE_KEY, type StorageLike } from './board/storage';
 
 const column = (name: string) => screen.getByRole('region', { name });
 const storedBoard = () => JSON.parse(window.localStorage.getItem(STORAGE_KEY)!).board;
@@ -149,5 +149,84 @@ describe('App', () => {
     render(<App />);
     expect(screen.getByText(/No se pudieron leer los datos guardados/)).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(4);
+  });
+});
+
+describe('Modo oscuro', () => {
+  const html = () => document.documentElement;
+  const themeButton = () => screen.getByRole('button', { name: 'Modo oscuro' });
+
+  afterEach(() => {
+    html().removeAttribute('data-theme');
+    vi.unstubAllGlobals();
+  });
+
+  it('la cabecera tiene un botón para cambiar a modo oscuro', () => {
+    render(<App />);
+    // jsdom también da rol banner a las cabeceras de columna: la de la app es la primera.
+    const header = screen.getAllByRole('banner')[0]!;
+    const button = within(header).getByRole('button', { name: 'Modo oscuro' });
+    expect(button).toHaveAttribute('aria-pressed', 'false');
+    expect(html()).toHaveAttribute('data-theme', 'light');
+  });
+
+  it('al pulsar el botón se activa el modo oscuro', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(themeButton());
+    expect(themeButton()).toHaveAttribute('aria-pressed', 'true');
+    expect(html()).toHaveAttribute('data-theme', 'dark');
+    await user.click(themeButton());
+    expect(themeButton()).toHaveAttribute('aria-pressed', 'false');
+    expect(html()).toHaveAttribute('data-theme', 'light');
+  });
+
+  it('se puede activar con el teclado', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    themeButton().focus();
+    await user.keyboard('{Enter}');
+    expect(themeButton()).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('el modo elegido se recuerda al volver a abrir', async () => {
+    const user = userEvent.setup();
+    const data: Record<string, string> = {};
+    const storage: StorageLike = {
+      getItem: (key) => (key in data ? data[key]! : null),
+      setItem: (key, value) => {
+        data[key] = value;
+      },
+    };
+    const { unmount } = render(<App storage={storage} />);
+    const boardBefore = data[STORAGE_KEY];
+    await user.click(themeButton());
+    expect(data[STORAGE_KEY]).toBe(boardBefore);
+    unmount();
+    html().removeAttribute('data-theme');
+    render(<App storage={storage} />);
+    expect(themeButton()).toHaveAttribute('aria-pressed', 'true');
+    expect(html()).toHaveAttribute('data-theme', 'dark');
+  });
+
+  it('sin preferencia guardada se respeta la del sistema', () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({ matches: query === '(prefers-color-scheme: dark)', media: query })),
+    );
+    render(<App />);
+    expect(themeButton()).toHaveAttribute('aria-pressed', 'true');
+    expect(html()).toHaveAttribute('data-theme', 'dark');
+  });
+
+  it('lo elegido a mano manda sobre el ajuste del sistema', async () => {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({ matches: true, media: query })));
+    const user = userEvent.setup();
+    const { unmount } = render(<App />);
+    await user.click(themeButton());
+    unmount();
+    render(<App />);
+    expect(themeButton()).toHaveAttribute('aria-pressed', 'false');
+    expect(html()).toHaveAttribute('data-theme', 'light');
   });
 });

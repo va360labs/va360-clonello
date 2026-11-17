@@ -7,6 +7,14 @@ export const STORAGE_KEY = 'clonello:v1';
 /** Copia de lo que había si no se pudo leer, para no perderlo al volver a sembrar. */
 export const BACKUP_KEY = 'clonello:v1:respaldo';
 
+/**
+ * Preferencia de tema (claro u oscuro). Va en su propia clave, separada del
+ * tablero: no forma parte de su esquema y leerla o guardarla nunca toca clonello:v1.
+ */
+export const THEME_KEY = 'clonello:tema';
+
+export type Theme = 'light' | 'dark';
+
 /** Lo mínimo de localStorage que necesitamos (facilita las pruebas). */
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
@@ -51,6 +59,21 @@ export function loadBoard(storage: StorageLike | null): LoadResult {
 export function saveBoard(storage: StorageLike | null, board: Board): boolean {
   const data: StoredData = { version: SCHEMA_VERSION, board };
   return safeSet(storage, STORAGE_KEY, JSON.stringify(data));
+}
+
+/**
+ * Lee el tema guardado. Si no hay (o es un valor raro, o no hay localStorage),
+ * usa el del sistema: oscuro si systemPrefersDark, claro si no.
+ */
+export function loadTheme(storage: StorageLike | null, systemPrefersDark = false): Theme {
+  const raw = safeGet(storage, THEME_KEY);
+  if (raw === 'light' || raw === 'dark') return raw;
+  return systemPrefersDark ? 'dark' : 'light';
+}
+
+/** Guarda el tema elegido. Devuelve false si no se pudo. */
+export function saveTheme(storage: StorageLike | null, theme: Theme): boolean {
+  return safeSet(storage, THEME_KEY, theme);
 }
 
 /** localStorage del navegador, o null si está bloqueado o no existe. */
