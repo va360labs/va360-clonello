@@ -25,6 +25,7 @@ import { findColumnOfCard } from '../board/reducer';
 import type { Board } from '../board/types';
 import { useBoard } from '../state/BoardProvider';
 import { AddColumnForm } from './AddColumnForm';
+import { BoardSwitcher } from './BoardSwitcher';
 import { CardFace } from './CardTile';
 import { CardModal } from './CardModal';
 import { ColumnPreview, ColumnView } from './ColumnView';
@@ -173,6 +174,7 @@ export function BoardView() {
         <h1 id="board-title" className="board__title">
           {board.title}
         </h1>
+        <BoardSwitcher />
       </div>
 
       <DndContext
