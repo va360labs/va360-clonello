@@ -1,0 +1,51 @@
+/* Paleta y medidas de Clonello. Paleta VA360: navy para la cabecera,
+   dorado como único acento (solo en lo interactivo), fondo claro y texto oscuro. */
+:root {
+  --navy: #1a1a2e;
+  --navy-soft: #2a2a44;
+  --gold: #c9a227;
+  --gold-strong: #b08c1c;
+  --gold-tint: #f4ecd2;
+
+  --bg: #edeff3;
+  --surface: #ffffff;
+  --surface-sunken: #e3e6ec;
+  --line: #d3d7e0;
+  --line-strong: #a9b0bf;
+
+  --text: #1b1d2a;
+  --text-muted: #5b6072;
+  --text-on-navy: #ffffff;
+  --text-on-navy-muted: #b9bccd;
+
+  --danger: #b42318;
+  --danger-tint: #fdecea;
+
+  --font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --fs-xs: 0.8125rem; /* 13px */
+  --fs-sm: 0.9375rem; /* 15px */
+  --fs-md: 1.0625rem; /* 17px */
+  --fs-lg: 1.375rem; /* 22px */
+  --fs-xl: 1.75rem; /* 28px */
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+
+  --column-width: 21rem;
+  --gutter: 2.5rem;
+  --header-height: 4rem;
+
+  --shadow-lift: 0 18px 40px -12px rgb(26 26 46 / 0.35), 0 4px 10px rgb(26 26 46 / 0.12);
+  --shadow-modal: 0 30px 80px -20px rgb(26 26 46 / 0.45);
+  --focus-ring: 0 0 0 3px var(--gold);
+}
+
+@media (max-width: 720px) {
+  :root {
+    --gutter: 1rem;
+    --header-height: 3.5rem;
+    --column-width: min(86vw, 21rem);
+  }
+}
