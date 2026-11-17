@@ -26,6 +26,7 @@ import type { Board } from '../board/types';
 import { useBoard } from '../state/BoardProvider';
 import { AddColumnForm } from './AddColumnForm';
 import { CardFace } from './CardTile';
+import { CardModal } from './CardModal';
 import { ColumnPreview, ColumnView } from './ColumnView';
 import './BoardView.css';
 
@@ -36,7 +37,7 @@ const kindOf = (item: Active | Over | null): DragKind | undefined =>
 
 export function BoardView() {
   const { board, dispatch } = useBoard();
-  const [, setOpenCardId] = useState<string | null>(null);
+  const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [active, setActive] = useState<{ id: string; kind: DragKind } | null>(null);
 
   // Tablero tal y como estaba al empezar a arrastrar: se restaura si se cancela.
@@ -164,6 +165,7 @@ export function BoardView() {
   const announcements = useAnnouncements(board);
   const activeCard = active?.kind === 'card' ? board.cards[active.id] : undefined;
   const activeColumn = active?.kind === 'column' ? board.columns.find((c) => c.id === active.id) : undefined;
+  const openCard = openCardId ? board.cards[openCardId] : undefined;
 
   return (
     <section className="board" aria-labelledby="board-title">
@@ -216,6 +218,7 @@ export function BoardView() {
         </DragOverlay>
       </DndContext>
 
+      {openCard && <CardModal key={openCard.id} card={openCard} onClose={() => setOpenCardId(null)} />}
     </section>
   );
 }
