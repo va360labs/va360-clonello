@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from './App';
-import { STORAGE_KEY } from './board/storage';
+import { TABLERO_V1_JSON } from './board/fixtures/tableroV1';
+import { STORAGE_KEY, STORAGE_KEY_V1 } from './board/storage';
 import { PREFERENCES_KEY } from './preferencias/tema';
 
 const column = (name: string) => screen.getByRole('region', { name });
@@ -255,5 +256,104 @@ describe('App', () => {
       await user.click(within(banner()).getByRole('button', { name: 'Activar modo oscuro' }));
       expect(temaDelHtml()).toBe('oscuro');
     });
+  });
+
+  describe('fecha límite', () => {
+    // Solo se falsea el reloj (Date): los temporizadores siguen siendo reales para user-event.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 10, 17, 12, 0));
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    const tile = (name: string) => screen.getByRole('button', { name });
+
+    async function ponerFecha(user: ReturnType<typeof userEvent.setup>, cardTitle: string, fecha: string) {
+      await user.click(tile(cardTitle));
+      const dialog = screen.getByRole('dialog', { name: cardTitle });
+      const campo = within(dialog).getByLabelText('Fecha límite');
+      fireEvent.change(campo, { target: { value: fecha } });
+      expect(campo).toHaveValue(fecha);
+      await user.click(within(dialog).getByRole('button', { name: 'Listo' }));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    }
+
+    it('una tarjeta sin fecha no muestra nada', () => {
+      render(<App />);
+      expect(within(tile('Formulario de contacto')).queryByText(/Fecha límite/)).not.toBeInTheDocument();
+      expect(tile('Formulario de contacto')).not.toHaveAccessibleDescription(/Fecha límite/);
+    });
+
+    it('pone una fecha límite desde el detalle', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await ponerFecha(user, 'Formulario de contacto', '2026-12-01');
+      expect(within(tile('Formulario de contacto')).getByText('1 dic')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Formulario de contacto', description: /^Fecha límite: 1 dic(\s|$)/ })).toBeInTheDocument();
+      expect(within(tile('Formulario de contacto')).queryByText('Vencida')).not.toBeInTheDocument();
+    });
+
+    it('quita la fecha límite', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await ponerFecha(user, 'Formulario de contacto', '2026-12-01');
+
+      await user.click(tile('Formulario de contacto'));
+      const dialog = screen.getByRole('dialog');
+      await user.click(within(dialog).getByRole('button', { name: 'Quitar fecha' }));
+      expect(within(dialog).getByLabelText('Fecha límite')).toHaveValue('');
+      expect(within(dialog).queryByRole('button', { name: 'Quitar fecha' })).not.toBeInTheDocument();
+      await user.click(within(dialog).getByRole('button', { name: 'Listo' }));
+
+      expect(within(tile('Formulario de contacto')).queryByText('1 dic')).not.toBeInTheDocument();
+      expect(storedBoard().cards['card-contacto'].dueDate).toBeNull();
+    });
+
+    it('quita la fecha límite vaciando el campo', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await ponerFecha(user, 'Formulario de contacto', '2026-12-01');
+      await ponerFecha(user, 'Formulario de contacto', '');
+      expect(within(tile('Formulario de contacto')).queryByText('1 dic')).not.toBeInTheDocument();
+    });
+
+    it('avisa de una tarjeta vencida', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await ponerFecha(user, 'Formulario de contacto', '2026-11-10');
+      const vencida = screen.getByRole('button', { name: 'Formulario de contacto', description: /^Fecha límite: 10 nov\. Vencida(\s|$)/ });
+      expect(within(vencida).getByText('Vencida')).toBeInTheDocument();
+      expect(within(vencida).getByText('10 nov')).toBeInTheDocument();
+    });
+
+    it('el mismo día del vencimiento todavía no está vencida', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await ponerFecha(user, 'Formulario de contacto', '2026-11-17');
+      expect(screen.getByRole('button', { name: 'Formulario de contacto', description: /^Fecha límite: 17 nov(\s|$)/ })).toBeInTheDocument();
+      expect(within(tile('Formulario de contacto')).queryByText('Vencida')).not.toBeInTheDocument();
+    });
+
+    it('la fecha se conserva al recargar', async () => {
+      const user = userEvent.setup();
+      const { unmount } = render(<App />);
+      await ponerFecha(user, 'Formulario de contacto', '2026-12-01');
+      expect(JSON.parse(window.localStorage.getItem('clonello:v2')!).board.cards['card-contacto'].dueDate).toBe('2026-12-01');
+      unmount();
+      render(<App />);
+      expect(within(tile('Formulario de contacto')).getByText('1 dic')).toBeInTheDocument();
+    });
+  });
+
+  it('conserva un tablero v1 guardado: lo migra a v2 sin avisos y sin borrar la v1', () => {
+    window.localStorage.setItem(STORAGE_KEY_V1, TABLERO_V1_JSON);
+    render(<App />);
+    expect(screen.queryByText(/No se pudieron leer los datos guardados/)).not.toBeInTheDocument();
+    expect(within(column('Revisión')).getByRole('button', { name: 'Repasar textos con Inés' })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(5);
+    expect(storedBoard().cards['card-7d21e0aa'].dueDate).toBeNull();
+    expect(window.localStorage.getItem(STORAGE_KEY_V1)).toBe(TABLERO_V1_JSON);
   });
 });

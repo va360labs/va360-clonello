@@ -16,10 +16,10 @@ function makeBoard(): Board {
       { id: 'c-c', title: 'Hecho', cardIds: [] },
     ],
     cards: {
-      'k-1': { id: 'k-1', title: 'Uno', description: '', labelIds: ['l-1'] },
-      'k-2': { id: 'k-2', title: 'Dos', description: 'Detalle', labelIds: [] },
-      'k-3': { id: 'k-3', title: 'Tres', description: '', labelIds: [] },
-      'k-4': { id: 'k-4', title: 'Cuatro', description: '', labelIds: ['l-2'] },
+      'k-1': { id: 'k-1', title: 'Uno', description: '', labelIds: ['l-1'], dueDate: null },
+      'k-2': { id: 'k-2', title: 'Dos', description: 'Detalle', labelIds: [], dueDate: '2026-11-20' },
+      'k-3': { id: 'k-3', title: 'Tres', description: '', labelIds: [], dueDate: null },
+      'k-4': { id: 'k-4', title: 'Cuatro', description: '', labelIds: ['l-2'], dueDate: null },
     },
   };
 }
@@ -83,7 +83,7 @@ describe('tarjetas', () => {
       title: ' Publicar ',
     });
     expect(cardIdsOf(next, 'c-c')).toEqual(['k-n']);
-    expect(next.cards['k-n']).toEqual({ id: 'k-n', title: 'Publicar', description: '', labelIds: [] });
+    expect(next.cards['k-n']).toEqual({ id: 'k-n', title: 'Publicar', description: '', labelIds: [], dueDate: null });
   });
 
   it('no crea tarjetas sin título, en columnas que no existen ni con id repetido', () => {
@@ -172,6 +172,44 @@ describe('etiquetas', () => {
   });
 });
 
+describe('fecha límite', () => {
+  it('pone fecha límite a una tarjeta', () => {
+    const board = makeBoard();
+    const next = boardReducer(board, { type: 'card/setDueDate', cardId: 'k-1', dueDate: '2026-12-01' });
+    expect(next.cards['k-1']).toEqual({ ...board.cards['k-1'], dueDate: '2026-12-01' });
+    expect(next.columns).toBe(board.columns);
+    expect(next.labels).toBe(board.labels);
+    expect({ ...next, cards: { ...next.cards, 'k-1': board.cards['k-1'] } }).toEqual(board);
+  });
+
+  it('cambia una fecha límite por otra', () => {
+    const next = boardReducer(makeBoard(), { type: 'card/setDueDate', cardId: 'k-2', dueDate: '2027-01-15' });
+    expect(next.cards['k-2']?.dueDate).toBe('2027-01-15');
+  });
+
+  it('quita la fecha límite', () => {
+    const next = boardReducer(makeBoard(), { type: 'card/setDueDate', cardId: 'k-2', dueDate: null });
+    expect(next.cards['k-2']?.dueDate).toBeNull();
+    expect(next.cards['k-2']).toMatchObject({ title: 'Dos', description: 'Detalle', labelIds: [] });
+  });
+
+  it('ignora una fecha sin sentido', () => {
+    const board = makeBoard();
+    expect(boardReducer(board, { type: 'card/setDueDate', cardId: 'nada', dueDate: '2026-12-01' })).toBe(board);
+    expect(boardReducer(board, { type: 'card/setDueDate', cardId: 'k-1', dueDate: '2026-13-45' })).toBe(board);
+    expect(boardReducer(board, { type: 'card/setDueDate', cardId: 'k-1', dueDate: '2026-02-30' })).toBe(board);
+    expect(boardReducer(board, { type: 'card/setDueDate', cardId: 'k-1', dueDate: 'mañana' })).toBe(board);
+    expect(boardReducer(board, { type: 'card/setDueDate', cardId: 'k-1', dueDate: '' })).toBe(board);
+    expect(boardReducer(board, { type: 'card/setDueDate', cardId: 'k-2', dueDate: '2026-11-20' })).toBe(board);
+    expect(boardReducer(board, { type: 'card/setDueDate', cardId: 'k-1', dueDate: null })).toBe(board);
+  });
+
+  it('una tarjeta nueva nace sin fecha', () => {
+    const next = boardReducer(makeBoard(), { type: 'card/add', id: 'k-n', columnId: 'c-a', title: 'Nueva' });
+    expect(next.cards['k-n']?.dueDate).toBeNull();
+  });
+});
+
 describe('pureza', () => {
   it('nunca muta el tablero de entrada', () => {
     const board = makeBoard();
@@ -180,6 +218,7 @@ describe('pureza', () => {
     boardReducer(board, { type: 'column/delete', columnId: 'c-a' });
     boardReducer(board, { type: 'card/toggleLabel', cardId: 'k-1', labelId: 'l-2' });
     boardReducer(board, { type: 'card/update', cardId: 'k-1', changes: { title: 'Otro' } });
+    boardReducer(board, { type: 'card/setDueDate', cardId: 'k-2', dueDate: null });
     expect(board).toEqual(copy);
   });
 

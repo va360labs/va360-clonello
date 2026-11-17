@@ -1,7 +1,11 @@
-import { LABEL_COLORS, type Board } from './types';
+import { isValidDueDate } from './dueDate';
+import { LABEL_COLORS, type Board, type Card } from './types';
 
-/** Versión del esquema guardado. Cambiarla exige migración (docs/memoria.md). */
-export const SCHEMA_VERSION = 1;
+/**
+ * Versión del esquema guardado. Cambiarla exige migración (docs/memoria.md).
+ * v1: tarjetas sin fecha. v2 (encargo #22): cada tarjeta lleva `dueDate`.
+ */
+export const SCHEMA_VERSION = 2;
 
 /** Lo que se guarda en localStorage: el tablero dentro de un sobre con versión. */
 export interface StoredData {
@@ -9,17 +13,39 @@ export interface StoredData {
   board: Board;
 }
 
-export type ValidationResult = { ok: true; data: StoredData } | { ok: false; errors: string[] };
+/** Tarjeta y tablero tal como eran en la versión 1 (antes de las fechas límite). */
+export type CardV1 = Omit<Card, 'dueDate'>;
+export type BoardV1 = Omit<Board, 'cards'> & { cards: Record<string, CardV1> };
+
+/** Lo que guardaba la versión 1 en clonello:v1. Solo se lee para migrar. */
+export interface StoredDataV1 {
+  version: 1;
+  board: BoardV1;
+}
+
+type Result<T> = { ok: true; data: T } | { ok: false; errors: string[] };
+export type ValidationResult = Result<StoredData>;
+export type ValidationResultV1 = Result<StoredDataV1>;
 
 /**
  * Valida a mano (sin dependencias) que un valor leído de localStorage cumple el
- * esquema, incluida la coherencia entre columnas, tarjetas y etiquetas.
+ * esquema actual (v2), incluida la coherencia entre columnas, tarjetas y etiquetas.
  * Los mensajes de error están en español porque pueden acabar en pantalla.
+ * No lee el reloj: una fecha pasada es tan válida como una futura.
  */
 export function validateStoredData(data: unknown): ValidationResult {
+  return validate<StoredData>(data, SCHEMA_VERSION);
+}
+
+/** Valida datos de la versión 1 (clonello:v1) antes de migrarlos. Ignora campos de más, como siempre hizo. */
+export function validateStoredDataV1(data: unknown): ValidationResultV1 {
+  return validate<StoredDataV1>(data, 1);
+}
+
+function validate<T>(data: unknown, version: 1 | 2): Result<T> {
   if (!isObject(data)) return fail('Los datos guardados no son un objeto.');
-  if (data.version !== SCHEMA_VERSION) {
-    return fail(`La versión del esquema es ${String(data.version)} y se esperaba ${SCHEMA_VERSION}.`);
+  if (data.version !== version) {
+    return fail(`La versión del esquema es ${String(data.version)} y se esperaba ${version}.`);
   }
   if (!isObject(data.board)) return fail('Falta el tablero.');
 
@@ -68,6 +94,9 @@ export function validateStoredData(data: unknown): ValidationResult {
           if (!labelIds.has(labelId)) errors.push(`La tarjeta ${key} usa una etiqueta que no existe: ${labelId}.`);
         }
       }
+      if (version >= 2 && card.dueDate !== null && !isValidDueDate(card.dueDate)) {
+        errors.push(`La tarjeta ${key} tiene una fecha límite no válida: ${String(card.dueDate)}. Se esperaba AAAA-MM-DD o nada.`);
+      }
     }
   }
 
@@ -102,10 +131,10 @@ export function validateStoredData(data: unknown): ValidationResult {
   }
 
   if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, data: data as unknown as StoredData };
+  return { ok: true, data: data as unknown as T };
 }
 
-function fail(message: string): ValidationResult {
+function fail(message: string): { ok: false; errors: string[] } {
   return { ok: false, errors: [message] };
 }
 
