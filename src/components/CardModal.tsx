@@ -88,6 +88,30 @@ export function CardModal({ card, onClose }: CardModalProps) {
 
         <section className="card-modal__section">
           <h3 className="card-modal__section-title">
+            <label htmlFor={`${headingId}-fecha`}>Fecha límite</label>
+          </h3>
+          <div className="card-modal__due">
+            <input
+              id={`${headingId}-fecha`}
+              type="date"
+              className="field"
+              value={card.dueDate ?? ''}
+              onChange={(e) => dispatch({ type: 'card/setDueDate', cardId: card.id, dueDate: e.target.value })}
+            />
+            {card.dueDate && (
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => dispatch({ type: 'card/setDueDate', cardId: card.id, dueDate: '' })}
+              >
+                Quitar fecha
+              </button>
+            )}
+          </div>
+        </section>
+
+        <section className="card-modal__section">
+          <h3 className="card-modal__section-title">
             <label htmlFor={`${headingId}-descripcion`}>Descripción</label>
           </h3>
           <textarea

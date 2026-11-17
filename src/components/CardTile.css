@@ -75,3 +75,26 @@
   box-shadow: var(--shadow-lift), 0 0 0 2px var(--gold);
   transform: rotate(-2.5deg);
 }
+
+/* Fecha límite: discreta; si ya pasó, en rojo con el texto «Vencida» (no solo color) */
+.card__due {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 0.3rem;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  line-height: 1.3;
+}
+
+.card__due svg {
+  flex: none;
+}
+
+.card__due--overdue {
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-sm);
+  background: var(--danger-tint);
+  color: var(--danger);
+  font-weight: 600;
+}

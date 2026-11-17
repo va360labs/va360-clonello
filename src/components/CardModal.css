@@ -64,6 +64,17 @@
   font-weight: 650;
 }
 
+.card-modal__due {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card-modal__due .field {
+  width: auto;
+}
+
 .card-modal__desc {
   min-height: 8rem;
 }

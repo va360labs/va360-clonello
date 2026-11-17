@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from './App';
-import { STORAGE_KEY } from './board/storage';
+import { LEGACY_STORAGE_KEY, STORAGE_KEY } from './board/storage';
 import { PREFERENCES_KEY } from './preferencias/tema';
 
 const column = (name: string) => screen.getByRole('region', { name });
@@ -256,6 +256,133 @@ describe('App', () => {
       const porHacer = column('Por hacer');
       expect(within(porHacer).getByRole('button', { name: 'Viaje a Lisboa' })).toBeInTheDocument();
       expect(within(porHacer).getByRole('button', { name: 'Viaje a Oporto' })).toBeInTheDocument();
+    });
+  });
+
+  describe('fecha límite', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    /** Fija «hoy» solo para Date, sin parar los temporizadores que usa user-event. */
+    const fixToday = (iso: string) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(`${iso}T10:00:00`));
+    };
+
+    async function setDueDate(user: ReturnType<typeof userEvent.setup>, cardTitle: string, date: string) {
+      await user.click(screen.getByRole('button', { name: cardTitle }));
+      const dialog = screen.getByRole('dialog', { name: cardTitle });
+      const input = within(dialog).getByLabelText('Fecha límite');
+      await user.clear(input);
+      await user.type(input, date);
+      await user.click(within(dialog).getByRole('button', { name: 'Listo' }));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    }
+
+    it('una tarjeta sin fecha no muestra nada', () => {
+      fixToday('2026-11-17');
+      render(<App />);
+      const tile = screen.getByRole('button', { name: 'Formulario de contacto' });
+      expect(within(tile).queryByText(/Fecha límite/)).not.toBeInTheDocument();
+      expect(within(tile).queryByText('Vencida')).not.toBeInTheDocument();
+    });
+
+    it('poner una fecha desde el detalle', async () => {
+      fixToday('2026-11-17');
+      const user = userEvent.setup();
+      render(<App />);
+      await setDueDate(user, 'Formulario de contacto', '2026-11-20');
+      const tile = screen.getByRole('button', { name: 'Formulario de contacto' });
+      expect(within(tile).getByText('20 nov')).toBeInTheDocument();
+      expect(within(tile).queryByText('Vencida')).not.toBeInTheDocument();
+      const saved = storedBoard();
+      const card = Object.values(saved.cards).find((c) => (c as { title: string }).title === 'Formulario de contacto');
+      expect(card).toMatchObject({ dueDate: '2026-11-20' });
+    });
+
+    it('cambiar la fecha desde el detalle', async () => {
+      fixToday('2026-11-17');
+      const user = userEvent.setup();
+      render(<App />);
+      await setDueDate(user, 'Formulario de contacto', '2026-11-20');
+      await setDueDate(user, 'Formulario de contacto', '2026-12-03');
+      const tile = screen.getByRole('button', { name: 'Formulario de contacto' });
+      expect(within(tile).getByText('3 dic')).toBeInTheDocument();
+      expect(within(tile).queryByText('20 nov')).not.toBeInTheDocument();
+    });
+
+    it('una tarjeta vencida se nota', async () => {
+      fixToday('2026-11-17');
+      const user = userEvent.setup();
+      render(<App />);
+      await setDueDate(user, 'Formulario de contacto', '2026-11-16');
+      await setDueDate(user, 'Elegir el alojamiento', '2026-11-25');
+      await setDueDate(user, 'Mapa de páginas de la web', '2026-11-17');
+
+      const vencida = screen.getByRole('button', { name: 'Formulario de contacto' });
+      expect(within(vencida).getByText('Vencida')).toBeInTheDocument();
+      expect(within(vencida).getByText('16 nov')).toBeInTheDocument();
+      // El lector de pantalla lo lee junto a la tarjeta.
+      expect(vencida).toHaveAccessibleDescription(/Vencida/);
+
+      const futura = screen.getByRole('button', { name: 'Elegir el alojamiento' });
+      expect(within(futura).getByText('25 nov')).toBeInTheDocument();
+      expect(within(futura).queryByText('Vencida')).not.toBeInTheDocument();
+
+      const hoy = screen.getByRole('button', { name: 'Mapa de páginas de la web' });
+      expect(within(hoy).queryByText('Vencida')).not.toBeInTheDocument();
+
+      expect(screen.getAllByText('Vencida')).toHaveLength(1);
+    });
+
+    it('quitar la fecha', async () => {
+      fixToday('2026-11-17');
+      const user = userEvent.setup();
+      render(<App />);
+      await setDueDate(user, 'Formulario de contacto', '2026-11-20');
+
+      await user.click(screen.getByRole('button', { name: 'Formulario de contacto' }));
+      const dialog = screen.getByRole('dialog', { name: 'Formulario de contacto' });
+      await user.click(within(dialog).getByRole('button', { name: 'Quitar fecha' }));
+      expect(within(dialog).getByLabelText('Fecha límite')).toHaveValue('');
+      expect(within(dialog).queryByRole('button', { name: 'Quitar fecha' })).not.toBeInTheDocument();
+      await user.click(within(dialog).getByRole('button', { name: 'Listo' }));
+
+      const tile = screen.getByRole('button', { name: 'Formulario de contacto' });
+      expect(within(tile).queryByText('20 nov')).not.toBeInTheDocument();
+    });
+
+    it('la fecha sobrevive al recargar', async () => {
+      fixToday('2026-11-17');
+      const user = userEvent.setup();
+      const { unmount } = render(<App />);
+      await setDueDate(user, 'Formulario de contacto', '2026-11-20');
+      unmount();
+      expect(JSON.parse(window.localStorage.getItem('clonello:v2')!).version).toBe(2);
+
+      render(<App />);
+      const tile = screen.getByRole('button', { name: 'Formulario de contacto' });
+      expect(within(tile).getByText('20 nov')).toBeInTheDocument();
+    });
+
+    it('un tablero guardado con la versión 1 se conserva al actualizar', () => {
+      const v1 = {
+        version: 1,
+        board: {
+          title: 'Mi tablero de antes',
+          labels: [],
+          columns: [{ id: 'c-1', title: 'Pendiente', cardIds: ['k-1'] }],
+          cards: { 'k-1': { id: 'k-1', title: 'Tarea antigua', description: '', labelIds: [] } },
+        },
+      };
+      window.localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(v1));
+      render(<App />);
+      expect(screen.getByRole('heading', { level: 1, name: 'Mi tablero de antes' })).toBeInTheDocument();
+      expect(within(column('Pendiente')).getByRole('button', { name: 'Tarea antigua' })).toBeInTheDocument();
+      expect(screen.queryByText(/No se pudieron leer/)).not.toBeInTheDocument();
+      expect(storedBoard().cards['k-1']).toMatchObject({ dueDate: null });
+      expect(JSON.parse(window.localStorage.getItem(LEGACY_STORAGE_KEY)!)).toEqual(v1);
     });
   });
 

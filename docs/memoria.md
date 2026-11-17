@@ -11,14 +11,16 @@ La app es estática y se publica en GitHub Pages. Cada visitante tiene su propio
 
 ## localStorage con esquema versionado
 
-- Clave `clonello:v1`. El valor es un sobre `{ "version": 1, "board": { … } }` (`src/board/storage.ts`).
+- Clave `clonello:v2`. El valor es un sobre `{ "version": 2, "board": { … } }` (`src/board/storage.ts`). La clave `clonello:v1` (esquema 1, sin fecha límite) solo se lee para migrar; ver «Fecha límite» más abajo.
 - `loadBoard()` valida lo leído con `validateStoredData()` (`src/board/schema.ts`). La validación es a mano, sin librerías, y comprueba también la coherencia entre columnas, tarjetas y etiquetas.
 - Primera visita o navegador sin `localStorage`: se siembran los datos de ejemplo (`src/board/seed.ts`).
-- Datos ilegibles (JSON roto o esquema inválido): se copian en `clonello:v1:respaldo`, se vuelve a sembrar y la app muestra un aviso.
+- Datos ilegibles (JSON roto o esquema inválido): se copian en `clonello:v2:respaldo` (o `clonello:v1:respaldo` si eran de la v1), se vuelve a sembrar y la app muestra un aviso.
 - **Por qué versionado**: el día que cambie el modelo, los tableros guardados en navegadores de gente real no deben romperse ni perderse.
 - **Por qué sin zod**: el esquema es pequeño, así no hay dependencias y los mensajes salen en español.
 
 ### Cómo cambiar el esquema (migración)
+
+Se hizo así por primera vez en el paso de la v1 a la v2 (encargo #12); el próximo cambio repite los pasos con la v3.
 
 1. Sube `SCHEMA_VERSION` en `schema.ts` y usa una clave nueva (`clonello:v2`).
 2. Escribe una función pura `migrateV1ToV2(datosV1)` con sus pruebas, incluido un tablero v1 real de ejemplo.
@@ -31,7 +33,7 @@ La app es estática y se publica en GitHub Pages. Cada visitante tiene su propio
 ```
 Board { title, columns: Column[], cards: Record<id, Card>, labels: Label[] }
 Column { id, title, cardIds: string[] }
-Card { id, title, description, labelIds: string[] }
+Card { id, title, description, labelIds: string[], dueDate: string | null }
 Label { id, name, color }
 ```
 
@@ -112,7 +114,7 @@ Las preferencias de quien usa la app (por ejemplo, el tema claro u oscuro) **no 
 
 Una preferencia visual se aplica antes del primer pintado (un script corto en `index.html`), para que la página no destelle con el tema equivocado al cargar.
 
-- Excepción a «nadie fuera de `src/board/storage.ts` toca `localStorage`»: `src/preferencias/` y el script de `index.html` pueden leer y escribir **solo** la clave `clonello:preferencias`. Nunca tocan `clonello:v1`.
+- Excepción a «nadie fuera de `src/board/storage.ts` toca `localStorage`»: `src/preferencias/` y el script de `index.html` pueden leer y escribir **solo** la clave `clonello:preferencias`. Nunca tocan las claves del tablero (`clonello:v1`, `clonello:v2`).
 - Formato: `{ "tema": "claro" | "oscuro" }`. Lo que no encaje (JSON roto, otro valor, sin `localStorage`) se ignora y se usa el tema por defecto. Si cambia el formato, hay que cambiar a la vez `src/preferencias/tema.ts` y el script de `index.html`.
 
 ### Modo oscuro
@@ -133,9 +135,20 @@ Botón «Importar tarjetas» junto al título del tablero: se elige un CSV y cad
 - **Sin vista previa ni etiquetas**, de momento: se importa al elegir el archivo para que el gesto sea corto; como solo añade (no borra ni cambia nada), lo importado se puede borrar a mano. Etiquetas y exportar quedan para otro encargo.
 - **Código**: lector puro sin dependencias en `src/board/csv.ts` (como la validación: sin Papa Parse, mensajes en español), acción `cards/import` en el reducer con ids creados por `importCards()` de `actions.ts`, y la interfaz en `src/components/ImportCards.tsx`. Si algún id está repetido o la columna por defecto no existe, el reducer devuelve el mismo tablero. No cambia el formato guardado.
 
+## Fecha límite
+
+Cada tarjeta puede tener una fecha límite. Se pone, cambia y quita desde el detalle (campo «Fecha límite» y botón «Quitar fecha»), y se ve en la tarjeta del tablero. Encargo #12.
+
+- **Formato**: `dueDate: 'AAAA-MM-DD' | null`, solo día y sin hora, para no tener líos de husos horarios. El campo es obligatorio en el esquema 2 (`null` si no hay fecha), así una tarjeta sin el campo delata datos rotos. El validador rechaza fechas mal escritas o que no existen (2026-02-30).
+- **Migración v1→v2**: `SCHEMA_VERSION` pasa a 2 y la clave a `clonello:v2`. `migrateV1ToV2()` (`src/board/migrate.ts`) es pura y solo añade `dueDate: null` a cada tarjeta. `loadBoard()` lee `clonello:v2`; si no existe, lee `clonello:v1`, la valida con `validateStoredDataV1()`, la migra, la valida con el validador nuevo y la guarda en `clonello:v2`. `clonello:v1` no se borra. Si la v1 no se puede leer, va a `clonello:v1:respaldo` y se siembra. La próxima versión que cambie el esquema podrá borrar `clonello:v1`.
+- **Vencida**: a partir del día siguiente a la fecha; el mismo día todavía no. Lo calcula `isOverdue(dueDate, today)` (`src/board/dueDate.ts`), a la que se le pasa «hoy». El reducer no lee la hora: la tarjeta calcula «hoy» con la hora local al pintarse.
+- **Cómo se ve**: icono de calendario y fecha corta sin librerías («20 nov»; con año si no es el actual). Vencida: fondo `--danger-tint`, texto `--danger` y la palabra «Vencida», no solo color. La fecha es la descripción accesible de la tarjeta (`aria-describedby`), así el lector de pantalla la lee con el título.
+- **Se marca vencida en cualquier columna**, también en «Hecho»: no existe la idea de columna terminada y adivinarla por nombre o posición sería frágil. Sin aviso aparte para «vence pronto», de momento.
+- **Datos de ejemplo sin fechas**: fechas fijas acabarían todas vencidas y calcularlas desde hoy haría que `createSeedBoard()` dependiera del reloj.
+
 ## Lo que la app no hace todavía
 
-Se dejó fuera a propósito: fechas límite, búsqueda y filtros, exportar (importar tarjetas desde CSV sí está, ver arriba), etiquetas al importar, checklists, asignar personas, varios tableros, compartir y permisos, historial de actividad y deshacer.
+Se dejó fuera a propósito: avisos de fechas que vencen pronto, búsqueda y filtros, exportar (importar tarjetas desde CSV sí está, ver arriba), etiquetas al importar, checklists, asignar personas, varios tableros, compartir y permisos, historial de actividad y deshacer.
 
 ## Registro de decisiones
 
@@ -146,3 +159,4 @@ Se dejó fuera a propósito: fechas límite, búsqueda y filtros, exportar (impo
 | 2026-11-17 | Preferencias de la interfaz fuera de los datos del tablero: módulo y clave propios, nunca en `storage.ts`, y aplicadas antes del primer pintado. Se decide al revisar la PR #5, que guardaba el tema en `storage.ts` y por eso pasaba a riesgo alto. |
 | 2026-11-17 | Encargo #6: modo oscuro. Botón en la cabecera, tokens oscuros en `tokens.css` bajo `data-tema="oscuro"`, preferencia en `src/preferencias/` con clave `clonello:preferencias` (excepción explícita a la regla de `localStorage`) y script en `index.html` para no destellar. Empieza siempre en claro y solo hay dos opciones. Colores sueltos pasados a tokens. Sin tocar `src/board/`. |
 | 2026-11-17 | Encargo #15: importar tarjetas desde un CSV. Lector propio en `src/board/csv.ts` (coma o punto y coma, comillas, BOM, UTF-8 o Windows-1252), acción `cards/import` con ids de `actions.ts`, columna por nombre y si no la primera, filas sin título saltadas y avisadas, máximo 500 tarjetas y 1 MB, sin vista previa ni etiquetas. Formato guardado sin cambios. |
+| 2026-11-17 | Encargo #12: fecha límite por tarjeta. Esquema 2 (`clonello:v2`) con `dueDate: 'AAAA-MM-DD' \| null`, migración pura `migrateV1ToV2` y `clonello:v1` conservada como respaldo. «Vencida» desde el día siguiente, calculada por `isOverdue(dueDate, today)` fuera del reducer, con color `--danger` y texto «Vencida». Se marca en cualquier columna. Datos de ejemplo sin fechas. |
