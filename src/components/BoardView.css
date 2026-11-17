@@ -78,8 +78,18 @@
     font-size: var(--fs-lg);
   }
 
+  .board__tools {
+    padding-bottom: 0.9rem;
+  }
+
   .board__lanes {
     scroll-padding-inline: calc(var(--gutter) - var(--lane-pad));
     scroll-snap-type: x mandatory;
   }
+}
+
+/* Buscador, debajo del título y encima de las columnas */
+.board__tools {
+  display: flex;
+  padding: 0 var(--gutter) 1.1rem;
 }

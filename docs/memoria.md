@@ -133,9 +133,21 @@ Botón «Importar tarjetas» junto al título del tablero: se elige un CSV y cad
 - **Sin vista previa ni etiquetas**, de momento: se importa al elegir el archivo para que el gesto sea corto; como solo añade (no borra ni cambia nada), lo importado se puede borrar a mano. Etiquetas y exportar quedan para otro encargo.
 - **Código**: lector puro sin dependencias en `src/board/csv.ts` (como la validación: sin Papa Parse, mensajes en español), acción `cards/import` en el reducer con ids creados por `importCards()` de `actions.ts`, y la interfaz en `src/components/ImportCards.tsx`. Si algún id está repetido o la columna por defecto no existe, el reducer devuelve el mismo tablero. No cambia el formato guardado.
 
+## Buscador de tarjetas
+
+Campo «Buscar tarjetas» debajo del título del tablero, encima de las columnas. Al escribir solo se ven las tarjetas cuyo título o descripción contienen lo escrito. Encargo #11 (antes la búsqueda estaba en «lo que no hace todavía»; la issue la pide expresamente).
+
+- **Es solo una vista**: el texto buscado es estado de `BoardView` y se pasa a `ColumnView`. No es una acción del reducer, no cambia `clonello:v1` ni se recuerda al recargar (tampoco en `clonello:preferencias`).
+- **La regla** es una función pura, `cardMatches()` en `src/board/search.ts`: título y descripción, sin distinguir mayúsculas ni tildes (`normalize('NFD')` y quitar diacríticos, así «n» también encuentra «ñ») y sin los espacios de los extremos. Vacío o solo espacios muestra todas. Las etiquetas no cuentan: la issue solo pide título y descripción.
+- **Sin arrastre mientras se busca** (tarjetas y columnas): con tarjetas ocultas la posición al soltar no sería la real en la columna. El texto de ayuda lo dice. Las tarjetas se siguen abriendo y editando, y el menú de columna sigue moviendo columnas (eso no depende del filtro).
+- **Sin «Añadir tarjeta» mientras se busca**: una tarjeta nueva que no coincidiera desaparecería al momento. Crear columnas e importar siguen disponibles.
+- Las columnas no se ocultan aunque no tengan resultados («Ninguna coincide en esta columna»). Si no coincide ninguna, aviso «Ninguna tarjeta coincide con la búsqueda» en una región `role="status"` que siempre está en la página, para que se anuncie; con resultados, la misma región dice cuántas coinciden (solo para lectores de pantalla).
+- Escape y un botón propio («Borrar la búsqueda») vacían el campo; se oculta la X nativa de WebKit para que sea igual en todos los navegadores.
+- Va debajo del título y no en la cabecera navy para no cargarla en móvil, y después de «Importar tarjetas» en el orden del teclado.
+
 ## Lo que la app no hace todavía
 
-Se dejó fuera a propósito: fechas límite, búsqueda y filtros, exportar (importar tarjetas desde CSV sí está, ver arriba), etiquetas al importar, checklists, asignar personas, varios tableros, compartir y permisos, historial de actividad y deshacer.
+Se dejó fuera a propósito: fechas límite, filtros (por etiqueta u otros; la búsqueda por texto sí está, ver arriba), exportar (importar tarjetas desde CSV sí está, ver arriba), etiquetas al importar, checklists, asignar personas, varios tableros, compartir y permisos, historial de actividad y deshacer.
 
 ## Registro de decisiones
 
@@ -146,3 +158,4 @@ Se dejó fuera a propósito: fechas límite, búsqueda y filtros, exportar (impo
 | 2026-11-17 | Preferencias de la interfaz fuera de los datos del tablero: módulo y clave propios, nunca en `storage.ts`, y aplicadas antes del primer pintado. Se decide al revisar la PR #5, que guardaba el tema en `storage.ts` y por eso pasaba a riesgo alto. |
 | 2026-11-17 | Encargo #6: modo oscuro. Botón en la cabecera, tokens oscuros en `tokens.css` bajo `data-tema="oscuro"`, preferencia en `src/preferencias/` con clave `clonello:preferencias` (excepción explícita a la regla de `localStorage`) y script en `index.html` para no destellar. Empieza siempre en claro y solo hay dos opciones. Colores sueltos pasados a tokens. Sin tocar `src/board/`. |
 | 2026-11-17 | Encargo #15: importar tarjetas desde un CSV. Lector propio en `src/board/csv.ts` (coma o punto y coma, comillas, BOM, UTF-8 o Windows-1252), acción `cards/import` con ids de `actions.ts`, columna por nombre y si no la primera, filas sin título saltadas y avisadas, máximo 500 tarjetas y 1 MB, sin vista previa ni etiquetas. Formato guardado sin cambios. |
+| 2026-11-17 | Encargo #11: buscador de tarjetas. Regla pura en `src/board/search.ts` (título y descripción, sin mayúsculas, tildes ni espacios de los extremos; sin etiquetas), texto como estado de `BoardView` que no se guarda, sin arrastre ni «Añadir tarjeta» mientras se busca, columnas siempre visibles y aviso anunciado si no hay resultados. Sin tocar reducer, tipos, esquema ni `storage.ts`. |

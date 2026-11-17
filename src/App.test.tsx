@@ -259,6 +259,97 @@ describe('App', () => {
     });
   });
 
+  describe('buscador', () => {
+    const searchbox = () => screen.getByRole('searchbox', { name: 'Buscar tarjetas' });
+    const SEED_TITLES = 12;
+    const visibleCards = () =>
+      ['Ideas', 'Por hacer', 'En curso', 'Hecho'].flatMap((name) => within(column(name)).queryAllByRole('listitem'));
+
+    it('hay un campo para buscar tarjetas', () => {
+      render(<App />);
+      expect(searchbox()).toHaveValue('');
+      expect(searchbox()).toHaveAccessibleDescription(/título y la descripción/);
+    });
+
+    it('filtra las tarjetas al escribir', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.type(searchbox(), 'formulario');
+      expect(screen.getByRole('button', { name: 'Página de viajes en grupo' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Formulario de contacto' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Elegir el alojamiento' })).not.toBeInTheDocument();
+      expect(visibleCards()).toHaveLength(2);
+    });
+
+    it('al borrar la búsqueda vuelven todas', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.type(searchbox(), 'formulario');
+      await user.clear(searchbox());
+      expect(visibleCards()).toHaveLength(SEED_TITLES);
+      const ideas = within(column('Ideas'))
+        .getAllByRole('listitem')
+        .map((item) => within(item).getByRole('button').getAttribute('aria-label'));
+      expect(ideas).toEqual(['Página de viajes en grupo', 'Blog con guías de destinos', 'Boletín mensual con ofertas']);
+    });
+
+    it('Escape vacía la búsqueda', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.type(searchbox(), 'formulario');
+      await user.keyboard('{Escape}');
+      expect(searchbox()).toHaveValue('');
+      expect(visibleCards()).toHaveLength(SEED_TITLES);
+    });
+
+    it('las columnas siguen visibles aunque no tengan resultados', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.type(searchbox(), 'Lisboa');
+      for (const name of ['Ideas', 'Por hacer', 'En curso', 'Hecho']) expect(column(name)).toBeInTheDocument();
+      expect(visibleCards()).toHaveLength(1);
+    });
+
+    it('avisa si no hay resultados', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.type(searchbox(), 'zzzz');
+      const aviso = screen.getByText('Ninguna tarjeta coincide con la búsqueda.');
+      expect(aviso.closest('[role="status"]')).not.toBeNull();
+      expect(visibleCards()).toHaveLength(0);
+    });
+
+    it('una tarjeta encontrada se abre y se edita como siempre', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.type(searchbox(), 'contacto');
+      await user.click(screen.getByRole('button', { name: 'Formulario de contacto' }));
+      expect(screen.getByRole('dialog', { name: 'Formulario de contacto' })).toBeInTheDocument();
+    });
+
+    it('mientras se busca no se añaden tarjetas', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.type(searchbox(), 'contacto');
+      expect(within(column('Ideas')).queryByRole('button', { name: 'Añadir tarjeta' })).not.toBeInTheDocument();
+      await user.clear(searchbox());
+      expect(within(column('Ideas')).getByRole('button', { name: 'Añadir tarjeta' })).toBeInTheDocument();
+    });
+
+    it('buscar no cambia el tablero guardado', async () => {
+      const user = userEvent.setup();
+      const { unmount } = render(<App />);
+      const antes = window.localStorage.getItem(STORAGE_KEY);
+      expect(antes).not.toBeNull();
+      await user.type(searchbox(), 'formulario');
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBe(antes);
+      unmount();
+      render(<App />);
+      expect(searchbox()).toHaveValue('');
+      expect(visibleCards()).toHaveLength(SEED_TITLES);
+    });
+  });
+
   describe('modo oscuro', () => {
     // La cabecera de la app es la primera: jsdom también da rol banner a las cabeceras de columna.
     const banner = () => screen.getAllByRole('banner')[0]!;

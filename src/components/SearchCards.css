@@ -1,0 +1,64 @@
+/* Buscador junto al título del tablero. El dorado solo en el foco (de .field). */
+.search {
+  display: grid;
+  gap: 0.3rem;
+  width: min(20rem, 100%);
+}
+
+.search__box {
+  position: relative;
+}
+
+.search__icon {
+  position: absolute;
+  top: 50%;
+  left: 0.7rem;
+  color: var(--text-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* Doble clase para ganar a .field sin depender del orden de los estilos. */
+.search .search__input {
+  padding-right: 2.4rem;
+  padding-left: 2.1rem;
+  border-color: var(--line-strong);
+}
+
+.search__input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Se usa el botón propio para borrar, igual en todos los navegadores. */
+.search__input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.search .search__input:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.search__clear {
+  position: absolute;
+  top: 50%;
+  right: 0.25rem;
+  color: var(--text-muted);
+  transform: translateY(-50%);
+}
+
+.search__hint {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+/* Aviso «Ninguna tarjeta coincide» (usa .notice de App.css). */
+.search__none {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 720px) {
+  .search {
+    width: 100%;
+  }
+}
