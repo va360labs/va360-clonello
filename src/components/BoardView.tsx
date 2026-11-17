@@ -21,6 +21,7 @@ import {
   type UniqueIdentifier,
 } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { filterCards, isSearching } from '../board/filter';
 import { findColumnOfCard } from '../board/reducer';
 import type { Board } from '../board/types';
 import { useBoard } from '../state/BoardProvider';
@@ -28,6 +29,7 @@ import { AddColumnForm } from './AddColumnForm';
 import { CardFace } from './CardTile';
 import { CardModal } from './CardModal';
 import { ColumnPreview, ColumnView } from './ColumnView';
+import { SearchField, SearchStatus } from './SearchCards';
 import './BoardView.css';
 
 type DragKind = 'card' | 'column';
@@ -39,6 +41,9 @@ export function BoardView() {
   const { board, dispatch } = useBoard();
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [active, setActive] = useState<{ id: string; kind: DragKind } | null>(null);
+  // Texto buscado: solo cambia lo que se ve, no se guarda en ningún sitio.
+  const [query, setQuery] = useState('');
+  const searching = isSearching(query);
 
   // Tablero tal y como estaba al empezar a arrastrar: se restaura si se cancela.
   const snapshot = useRef<Board | null>(null);
@@ -166,6 +171,7 @@ export function BoardView() {
   const activeCard = active?.kind === 'card' ? board.cards[active.id] : undefined;
   const activeColumn = active?.kind === 'column' ? board.columns.find((c) => c.id === active.id) : undefined;
   const openCard = openCardId ? board.cards[openCardId] : undefined;
+  const matches = searching ? filterCards(Object.values(board.cards), query).length : 0;
 
   return (
     <section className="board" aria-labelledby="board-title">
@@ -173,7 +179,9 @@ export function BoardView() {
         <h1 id="board-title" className="board__title">
           {board.title}
         </h1>
+        <SearchField query={query} onChange={setQuery} searching={searching} />
       </div>
+      <SearchStatus searching={searching} matches={matches} />
 
       <DndContext
         sensors={sensors}
@@ -198,6 +206,7 @@ export function BoardView() {
                 column={column}
                 index={index}
                 total={board.columns.length}
+                query={query}
                 onOpenCard={setOpenCardId}
               />
             ))}

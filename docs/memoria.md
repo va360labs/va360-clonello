@@ -135,9 +135,21 @@ Una preferencia visual se aplica antes del primer pintado (un script corto en `i
 - **Por qué no es una acción del reducer**: exportar no cambia el estado. Una función pura de lectura se prueba sin navegador, no toca `types.ts`, `schema.ts`, `storage.ts` ni `localStorage`, y el reducer sigue siendo solo para cambios.
 - Solo CSV, no JSON: la importación (#16) se revirtió. Si vuelve, conviene decidir entonces un formato de ida y vuelta (probablemente el JSON del sobre `clonello:v1`), porque el CSV pierde ids y colores.
 
+## Buscador de tarjetas
+
+Campo «Buscar tarjetas» junto al título del tablero (no en la cabecera navy, para no cargarla en móvil). Al escribir solo se ven las tarjetas cuyo título o descripción contienen lo escrito. Encargo #21; repite el #11 (PR #20), que se revirtió sin que conste el motivo.
+
+- **Es solo una vista**: el texto es estado de `BoardView` y se pasa a `ColumnView`. No es una acción del reducer, no cambia `clonello:v1` ni se recuerda al recargar (tampoco en `clonello:preferencias`).
+- **La regla** es pura, en `src/board/filter.ts` (`filterCards`, `cardMatches`, `isSearching`): título y descripción, sin distinguir mayúsculas ni tildes (`normalize('NFD')` y quitar diacríticos) y sin los espacios de los extremos. Vacío o solo espacios muestra todas, en su orden. Las etiquetas no cuentan: la issue solo pide título y descripción.
+- **Sin arrastre mientras se busca** (tarjetas y columnas, con el asa apagada): con tarjetas ocultas la posición al soltar no sería la real. Es la opción simple y segura; el texto de ayuda lo dice. Las tarjetas se siguen abriendo y editando, y el menú de columna sigue moviendo columnas (no depende del filtro).
+- **Sin «Añadir tarjeta» mientras se busca**: una tarjeta nueva que no coincidiera desaparecería al momento.
+- Las columnas no se ocultan («Ninguna coincide en esta columna») y su contador sigue mostrando el total real. Si no coincide ninguna, aviso «Ninguna tarjeta coincide con la búsqueda» en una región `role="status"` siempre presente; con resultados, la misma región dice cuántas coinciden (solo para lectores de pantalla).
+- **Sin dorado en el aviso**: a diferencia de `.notice`, lleva filete `--line-strong`, porque no es interactivo. El dorado solo aparece en el foco del campo. Por si el motivo de revertir la PR #20 fue que dependía de la importación (ya revertida) o que usaba `.notice` con dorado, esta versión no depende de ninguna de las dos.
+- Escape y un botón propio («Borrar la búsqueda») vacían el campo; se oculta la X nativa de WebKit.
+
 ## Lo que la app no hace todavía
 
-Se dejó fuera a propósito: fechas límite, búsqueda y filtros, importar, checklists, asignar personas, varios tableros, compartir y permisos, historial de actividad y deshacer.
+Se dejó fuera a propósito: fechas límite, filtros (por etiqueta u otros; la búsqueda por texto sí está, ver arriba), importar, checklists, asignar personas, varios tableros, compartir y permisos, historial de actividad y deshacer.
 
 ## Registro de decisiones
 
@@ -149,3 +161,4 @@ Se dejó fuera a propósito: fechas límite, búsqueda y filtros, importar, chec
 | 2026-11-17 | Encargo #6: modo oscuro. Botón en la cabecera, tokens oscuros en `tokens.css` bajo `data-tema="oscuro"`, preferencia en `src/preferencias/` con clave `clonello:preferencias` (excepción explícita a la regla de `localStorage`) y script en `index.html` para no destellar. Empieza siempre en claro y solo hay dos opciones. Colores sueltos pasados a tokens. Sin tocar `src/board/`. |
 | 2026-11-17 | Encargo #24: contador de tarjetas en la cabecera de cada columna. Sale de `column.cardIds.length`, sin tocar `src/board/`. Va fuera del `<h2>` para que el título y el nombre accesible de la columna sigan siendo solo su nombre (y renombrar no cambie). El número visible es `aria-hidden` y el lector de pantalla oye un texto oculto «N tarjetas» / «1 tarjeta». Píldora discreta con `--surface-sunken` y `--text-muted`, sin dorado porque no es interactiva. También se muestra en la columna que vuela al arrastrar, por coherencia (pregunta abierta de la ficha). |
 | 2026-11-17 | Encargo #23: exportar el tablero a CSV. Función pura `boardToCsv` en `src/board/exportCsv.ts` (lectura, no acción del reducer) y botón «Exportar tablero» en la cabecera. Separador `;`, BOM UTF‑8, CRLF, comillas RFC 4180, apóstrofo delante de `= + - @` para neutralizar fórmulas, columnas vacías como fila con su nombre, etiquetas por nombre y archivo `clonello-AAAA-MM-DD.csv`. Solo CSV; un JSON reimportable queda para cuando vuelva la importación. «Compartir» se entiende como mandar el archivo a mano: sin servidor. |
+| 2026-11-17 | Encargo #21: buscador de tarjetas junto al título. Regla pura en `src/board/filter.ts` (título y descripción, sin mayúsculas, tildes ni espacios de los extremos; sin etiquetas), texto como estado de `BoardView` que no se guarda, arrastre y «Añadir tarjeta» desactivados mientras se busca, columnas siempre visibles con su total y aviso sin dorado si no hay resultados. Sin tocar reducer, tipos, esquema, `storage.ts` ni `seed.ts`. |

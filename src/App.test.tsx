@@ -317,4 +317,78 @@ describe('App', () => {
       expect(blobs).toHaveLength(1);
     });
   });
+
+  describe('buscador', () => {
+    const search = () => screen.getByRole('searchbox', { name: 'Buscar tarjetas' });
+    const visibleCards = () =>
+      ['Ideas', 'Por hacer', 'En curso', 'Hecho'].flatMap((name) => within(column(name)).queryAllByRole('listitem'));
+
+    it('hay un campo para buscar tarjetas', () => {
+      render(<App />);
+      expect(search()).toBeInTheDocument();
+      expect(search()).toHaveValue('');
+    });
+
+    it('al escribir solo quedan las tarjetas que coinciden', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.type(search(), 'boletín');
+      expect(screen.getByRole('button', { name: 'Boletín mensual con ofertas' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Formulario de contacto' })).not.toBeInTheDocument();
+      expect(visibleCards()).toHaveLength(1);
+    });
+
+    it('al borrar el texto se ven todas otra vez', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      const antes = visibleCards().map((li) => li.textContent);
+      await user.type(search(), 'Lisboa');
+      expect(visibleCards()).toHaveLength(1);
+      await user.clear(search());
+      expect(visibleCards()).toHaveLength(12);
+      expect(visibleCards().map((li) => li.textContent)).toEqual(antes);
+    });
+
+    it('si no hay resultados lo dice', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.type(search(), 'zzz');
+      expect(screen.getByText('Ninguna tarjeta coincide con la búsqueda.')).toBeInTheDocument();
+      expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(4);
+      expect(visibleCards()).toHaveLength(0);
+    });
+
+    it('buscar no cambia el tablero guardado', async () => {
+      const user = userEvent.setup();
+      const { unmount } = render(<App />);
+      const antes = window.localStorage.getItem(STORAGE_KEY);
+      await user.type(search(), 'boletín');
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBe(antes);
+      unmount();
+      render(<App />);
+      expect(search()).toHaveValue('');
+      expect(visibleCards()).toHaveLength(12);
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBe(antes);
+    });
+
+    it('mientras se busca no se arrastra ni se añaden tarjetas', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.type(search(), 'boletín');
+      const tile = screen.getByRole('button', { name: 'Boletín mensual con ofertas' });
+      expect(tile).not.toHaveAttribute('aria-roledescription', 'tarjeta arrastrable');
+      expect(within(column('Ideas')).getByRole('button', { name: 'Mover la columna Ideas' })).toBeDisabled();
+      expect(screen.queryByRole('button', { name: 'Añadir tarjeta' })).not.toBeInTheDocument();
+      await user.click(tile);
+      expect(screen.getByRole('dialog', { name: 'Boletín mensual con ofertas' })).toBeInTheDocument();
+    });
+
+    it('Escape vacía la búsqueda', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.type(search(), 'zzz{Escape}');
+      expect(search()).toHaveValue('');
+      expect(visibleCards()).toHaveLength(12);
+    });
+  });
 });

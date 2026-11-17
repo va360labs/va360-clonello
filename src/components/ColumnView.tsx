@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { filterCards, isSearching } from '../board/filter';
 import type { Card, Column, Label } from '../board/types';
 import { useBoard } from '../state/BoardProvider';
 import { AddCardForm } from './AddCardForm';
@@ -13,16 +14,23 @@ interface ColumnViewProps {
   column: Column;
   index: number;
   total: number;
+  /** Texto buscado. Si hay búsqueda, solo se pintan las tarjetas que coinciden y no se arrastra ni se añade. */
+  query: string;
   onOpenCard: (cardId: string) => void;
 }
 
-export function ColumnView({ column, index, total, onOpenCard }: ColumnViewProps) {
+export function ColumnView({ column, index, total, query, onOpenCard }: ColumnViewProps) {
   const { board, dispatch } = useBoard();
   const [editing, setEditing] = useState(false);
+  // Con tarjetas ocultas la posición al soltar no sería la real: mientras se busca no se arrastra.
+  const searching = isSearching(query);
+  const cards = column.cardIds.map((id) => board.cards[id]).filter((c): c is Card => c !== undefined);
+  const visible = searching ? filterCards(cards, query) : cards;
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
     useSortable({
       id: column.id,
       data: { type: 'column' },
+      disabled: searching,
       attributes: { roleDescription: 'columna arrastrable' },
     });
 
@@ -61,6 +69,7 @@ export function ColumnView({ column, index, total, onOpenCard }: ColumnViewProps
           ref={setActivatorNodeRef}
           type="button"
           className="icon-btn column__grip"
+          disabled={searching}
           {...attributes}
           {...listeners}
           aria-label={`Mover la columna ${column.title}`}
@@ -70,20 +79,30 @@ export function ColumnView({ column, index, total, onOpenCard }: ColumnViewProps
         <ColumnMenu column={column} index={index} total={total} onRename={() => setEditing(true)} />
       </header>
 
-      <SortableContext items={column.cardIds} strategy={verticalListSortingStrategy}>
+      <SortableContext items={visible.map((c) => c.id)} strategy={verticalListSortingStrategy}>
         <ol className="column__cards">
-          {column.cardIds.map((cardId) => {
-            const card = board.cards[cardId];
-            return card ? (
-              <CardTile key={cardId} card={card} labels={board.labels} columnId={column.id} onOpen={onOpenCard} />
-            ) : null;
-          })}
+          {visible.map((card) => (
+            <CardTile
+              key={card.id}
+              card={card}
+              labels={board.labels}
+              columnId={column.id}
+              dragDisabled={searching}
+              onOpen={onOpenCard}
+            />
+          ))}
         </ol>
       </SortableContext>
 
-      {column.cardIds.length === 0 && <p className="column__empty">Arrastra aquí una tarjeta o añade una nueva.</p>}
+      {visible.length === 0 &&
+        (searching ? (
+          <p className="column__empty">Ninguna coincide en esta columna.</p>
+        ) : (
+          <p className="column__empty">Arrastra aquí una tarjeta o añade una nueva.</p>
+        ))}
 
-      <AddCardForm columnId={column.id} columnTitle={column.title} />
+      {/* Una tarjeta nueva que no coincidiera desaparecería al momento: mientras se busca no se añade. */}
+      {!searching && <AddCardForm columnId={column.id} columnTitle={column.title} />}
     </section>
   );
 }

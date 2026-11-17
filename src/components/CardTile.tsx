@@ -32,16 +32,21 @@ export function CardFace({ card, labels }: CardFaceProps) {
 
 interface CardTileProps extends CardFaceProps {
   columnId: string;
+  /** Mientras se busca no se arrastra; la tarjeta se sigue abriendo con clic o Intro. */
+  dragDisabled?: boolean;
   onOpen: (cardId: string) => void;
 }
 
 /** Tarjeta del tablero: se arrastra con ratón, dedo o teclado (espacio) y se abre con clic o Intro. */
-export function CardTile({ card, labels, columnId, onOpen }: CardTileProps) {
+export function CardTile({ card, labels, columnId, dragDisabled = false, onOpen }: CardTileProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
     data: { type: 'card', columnId },
-    attributes: { roleDescription: 'tarjeta arrastrable' },
+    disabled: dragDisabled,
+    attributes: { roleDescription: dragDisabled ? 'tarjeta' : 'tarjeta arrastrable' },
   });
+  // Sin arrastre la tarjeta no está desactivada (se abre igual) ni necesita las instrucciones de arrastre.
+  const a11y = dragDisabled ? { ...attributes, 'aria-disabled': undefined, 'aria-describedby': undefined } : attributes;
 
   return (
     <li
@@ -50,10 +55,10 @@ export function CardTile({ card, labels, columnId, onOpen }: CardTileProps) {
       style={{ transform: CSS.Translate.toString(transform), transition }}
     >
       <article
-        {...attributes}
+        {...a11y}
         {...listeners}
         aria-label={card.title}
-        className={isDragging ? 'card card--placeholder' : 'card'}
+        className={isDragging ? 'card card--placeholder' : dragDisabled ? 'card card--static' : 'card'}
         onClick={() => onOpen(card.id)}
         onKeyDown={(event) => {
           listeners?.onKeyDown?.(event);

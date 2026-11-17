@@ -95,6 +95,12 @@ button.column__title-btn:hover {
   cursor: grabbing;
 }
 
+/* Mientras se busca no se arrastra: el asa se apaga. */
+.column__grip:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 /* El hueco de 3px deja ver el anillo de foco dentro de una lista con scroll */
 .column__cards {
   display: flex;

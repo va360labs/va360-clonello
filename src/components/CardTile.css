@@ -17,6 +17,11 @@
     box-shadow 0.15s ease;
 }
 
+/* Mientras se busca la tarjeta no se arrastra, solo se abre. */
+.card--static {
+  cursor: pointer;
+}
+
 .card:hover {
   border-color: var(--line-strong);
 }
