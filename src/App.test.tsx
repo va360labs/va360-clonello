@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from './App';
 import { STORAGE_KEY } from './board/storage';
+import { PREFERENCES_KEY } from './preferencias/tema';
 
 const column = (name: string) => screen.getByRole('region', { name });
 const storedBoard = () => JSON.parse(window.localStorage.getItem(STORAGE_KEY)!).board;
@@ -149,5 +150,58 @@ describe('App', () => {
     render(<App />);
     expect(screen.getByText(/No se pudieron leer los datos guardados/)).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(4);
+  });
+
+  describe('modo oscuro', () => {
+    // La cabecera de la app es la primera: jsdom también da rol banner a las cabeceras de columna.
+    const banner = () => screen.getAllByRole('banner')[0]!;
+    const temaDelHtml = () => document.documentElement.getAttribute('data-tema');
+
+    it('hay un botón para activar el modo oscuro', () => {
+      render(<App />);
+      expect(within(banner()).getByRole('button', { name: 'Activar modo oscuro' })).toBeInTheDocument();
+      expect(temaDelHtml()).not.toBe('oscuro');
+    });
+
+    it('al pulsarlo cambia el tema y el botón', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.click(within(banner()).getByRole('button', { name: 'Activar modo oscuro' }));
+      expect(temaDelHtml()).toBe('oscuro');
+      const volver = within(banner()).getByRole('button', { name: 'Activar modo claro' });
+      await user.click(volver);
+      expect(temaDelHtml()).toBe('claro');
+      expect(within(banner()).getByRole('button', { name: 'Activar modo oscuro' })).toBeInTheDocument();
+    });
+
+    it('el tema se recuerda al volver', async () => {
+      const user = userEvent.setup();
+      const { unmount } = render(<App />);
+      await user.click(within(banner()).getByRole('button', { name: 'Activar modo oscuro' }));
+      unmount();
+      document.documentElement.removeAttribute('data-tema');
+
+      expect(window.localStorage.getItem(PREFERENCES_KEY)).toBe('{"tema":"oscuro"}');
+      render(<App />);
+      expect(temaDelHtml()).toBe('oscuro');
+      expect(within(banner()).getByRole('button', { name: 'Activar modo claro' })).toBeInTheDocument();
+    });
+
+    it('cambiar el tema no toca el tablero', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      const antes = window.localStorage.getItem(STORAGE_KEY);
+      expect(antes).not.toBeNull();
+      await user.click(within(banner()).getByRole('button', { name: 'Activar modo oscuro' }));
+      await user.click(within(banner()).getByRole('button', { name: 'Activar modo claro' }));
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBe(antes);
+    });
+
+    it('sin localStorage arranca en claro y el botón sigue funcionando', async () => {
+      const user = userEvent.setup();
+      render(<App storage={null} />);
+      await user.click(within(banner()).getByRole('button', { name: 'Activar modo oscuro' }));
+      expect(temaDelHtml()).toBe('oscuro');
+    });
   });
 });

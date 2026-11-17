@@ -5,7 +5,32 @@
   gap: 1rem;
   height: var(--header-height);
   padding: 0 var(--gutter);
+  border-bottom: 1px solid var(--header-line);
   background: var(--navy);
+  color: var(--text-on-navy);
+}
+
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Botón de tema: discreto sobre el navy; el dorado solo aparece en el foco. */
+.header__theme {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 1px solid var(--header-divider);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-on-navy-muted);
+}
+
+.header__theme:hover {
+  background: var(--navy-soft);
   color: var(--text-on-navy);
 }
 
@@ -25,7 +50,7 @@
 .header__divider {
   width: 1px;
   height: 22px;
-  background: rgba(255, 255, 255, 0.28);
+  background: var(--header-divider);
 }
 
 .header__product {

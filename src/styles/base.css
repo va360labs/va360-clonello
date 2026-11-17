@@ -109,7 +109,7 @@ button {
 
 .btn--danger-solid {
   background: var(--danger);
-  color: #fff;
+  color: var(--text-on-danger);
 }
 
 .icon-btn {

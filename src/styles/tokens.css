@@ -1,6 +1,8 @@
 /* Paleta y medidas de Clonello. Paleta VA360: navy para la cabecera,
    dorado como único acento (solo en lo interactivo), fondo claro y texto oscuro. */
 :root {
+  color-scheme: light;
+
   --navy: #1a1a2e;
   --navy-soft: #2a2a44;
   --gold: #c9a227;
@@ -20,6 +22,20 @@
 
   --danger: #b42318;
   --danger-tint: #fdecea;
+  --text-on-danger: #ffffff;
+  /* Marca blanca sobre el punto de color de una etiqueta (igual en los dos temas). */
+  --text-on-label: #ffffff;
+
+  /* Borde o anillo marcado (columna nueva al pasar el ratón, color elegido). */
+  --line-bold: var(--navy);
+  /* Separadores dentro de la cabecera navy y filete inferior (solo en oscuro). */
+  --header-divider: rgb(255 255 255 / 0.28);
+  --header-line: transparent;
+  /* Fondo teñido de las etiquetas: su color mezclado con la superficie. */
+  --label-tint: 13%;
+  --label-border: 55%;
+  /* Velo detrás del modal. */
+  --backdrop: rgb(26 26 46 / 0.55);
 
   --font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
@@ -42,6 +58,39 @@
   --shadow-lift: 0 18px 40px -12px rgb(26 26 46 / 0.35), 0 4px 10px rgb(26 26 46 / 0.12);
   --shadow-modal: 0 30px 80px -20px rgb(26 26 46 / 0.45);
   --focus-ring: 0 0 0 3px var(--gold);
+}
+
+/* Tema oscuro: lo activa data-tema="oscuro" en <html> (script de index.html y
+   src/preferencias/). La cabecera sigue navy; el dorado sigue siendo el único
+   acento y sobre él el texto sigue siendo navy. */
+:root[data-tema='oscuro'] {
+  color-scheme: dark;
+
+  --gold-strong: #d9b23a;
+  --gold-tint: #4a3f1c;
+
+  --bg: #12131c;
+  --surface: #1f2130;
+  --surface-sunken: #2a2c3e;
+  --line: #363950;
+  --line-strong: #565b75;
+
+  --text: #e7e9f1;
+  --text-muted: #a5aabd;
+
+  --danger: #f2877c;
+  --danger-tint: #3b2224;
+  --text-on-danger: var(--navy);
+
+  --line-bold: var(--text);
+  --header-line: #2f3149;
+  --label-tint: 24%;
+  --label-border: 70%;
+  --backdrop: rgb(5 6 12 / 0.7);
+
+  --shadow-hover: 0 6px 16px -6px rgb(0 0 0 / 0.55), 0 1px 3px rgb(0 0 0 / 0.35);
+  --shadow-lift: 0 18px 40px -12px rgb(0 0 0 / 0.7), 0 4px 10px rgb(0 0 0 / 0.4);
+  --shadow-modal: 0 30px 80px -20px rgb(0 0 0 / 0.8);
 }
 
 @media (max-width: 720px) {

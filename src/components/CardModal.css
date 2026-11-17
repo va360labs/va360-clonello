@@ -122,8 +122,8 @@
 }
 
 .label-toggle[aria-pressed='true'] {
-  border-color: color-mix(in srgb, var(--label) 55%, white);
-  background: color-mix(in srgb, var(--label) 13%, white);
+  border-color: color-mix(in srgb, var(--label) var(--label-border), var(--surface));
+  background: color-mix(in srgb, var(--label) var(--label-tint), var(--surface));
 }
 
 .label-toggle__dot {
@@ -133,7 +133,7 @@
   height: 0.95rem;
   border-radius: 50%;
   background: var(--label);
-  color: #fff;
+  color: var(--text-on-label);
 }
 
 .label-toggle--new {
@@ -182,7 +182,7 @@
 }
 
 .swatch input:checked + span {
-  box-shadow: 0 0 0 2px var(--navy);
+  box-shadow: 0 0 0 2px var(--line-bold);
 }
 
 .swatch input:focus-visible + span {
