@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from './App';
 import { STORAGE_KEY } from './board/storage';
@@ -150,6 +150,113 @@ describe('App', () => {
     render(<App />);
     expect(screen.getByText(/No se pudieron leer los datos guardados/)).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(4);
+  });
+
+  describe('importar tarjetas', () => {
+    const csvFile = (content: string, name = 'tarjetas.csv') => new File([content], name, { type: 'text/csv' });
+    const fileInput = () => screen.getByLabelText('Archivo CSV con tarjetas');
+    const cardCount = () => Object.keys(storedBoard().cards).length;
+    // dnd-kit tiene su propia región role="status" (vacía) para los anuncios del arrastre.
+    const notices = () => screen.queryAllByRole('status').filter((el) => el.textContent?.trim());
+    const findNotice = () =>
+      waitFor(() => {
+        const [notice] = notices();
+        if (!notice) throw new Error('No hay aviso');
+        return notice;
+      });
+
+    async function importFile(user: ReturnType<typeof userEvent.setup>, file: File) {
+      const button = screen.getByRole('button', { name: 'Importar tarjetas' });
+      await user.click(button);
+      await user.upload(fileInput(), file);
+    }
+
+    it('hay un botón «Importar tarjetas» al que se llega con el teclado', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      const button = screen.getByRole('button', { name: 'Importar tarjetas' });
+      await user.tab();
+      await user.tab();
+      expect(button).toHaveFocus();
+    });
+
+    it('importar un CSV crea las tarjetas', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      const antes = cardCount();
+      await importFile(
+        user,
+        csvFile(
+          '﻿Título;Descripción;Columna\r\nPublicar en redes;"Instagram, Facebook";Hecho\r\nRevisar textos;;\r\nMedir visitas;;hecho\r\n',
+        ),
+      );
+
+      const status = await findNotice();
+      expect(status).toHaveTextContent('Se han importado 3 tarjetas.');
+      const hecho = column('Hecho');
+      expect(within(hecho).getByRole('button', { name: 'Publicar en redes' })).toBeInTheDocument();
+      expect(within(hecho).getByRole('button', { name: 'Medir visitas' })).toBeInTheDocument();
+      expect(within(hecho).getAllByRole('listitem')).toHaveLength(5);
+      expect(within(column('Ideas')).getByRole('button', { name: 'Revisar textos' })).toBeInTheDocument();
+      expect(within(screen.getByRole('button', { name: 'Publicar en redes' })).getByText('Instagram, Facebook')).toBeInTheDocument();
+      expect(cardCount()).toBe(antes + 3);
+    });
+
+    it('un CSV con filas erróneas avisa en español', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await importFile(user, csvFile('titulo,descripcion\nBuena,\n,Sin título\nOtra buena,\n,Tampoco\n'));
+      const status = await findNotice();
+      expect(status).toHaveTextContent('Se han importado 2 tarjetas.');
+      expect(status).toHaveTextContent('Se han saltado 2 filas sin título (filas 3 y 5).');
+      expect(screen.getByRole('button', { name: 'Buena' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Otra buena' })).toBeInTheDocument();
+    });
+
+    it('un archivo que no es un CSV válido no cambia el tablero', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      const antes = window.localStorage.getItem(STORAGE_KEY);
+      await importFile(user, csvFile('nombre;precio\nCafé;1,20\n'));
+      const status = await findNotice();
+      expect(status).toHaveTextContent(/No se ha importado nada/);
+      expect(status).toHaveTextContent(/columna «titulo»/);
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBe(antes);
+      expect(screen.queryByRole('button', { name: 'Café' })).not.toBeInTheDocument();
+
+      await importFile(user, csvFile(''));
+      expect(await screen.findByText(/El archivo está vacío/)).toBeInTheDocument();
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBe(antes);
+    });
+
+    it('se puede cerrar el aviso', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await importFile(user, csvFile('titulo\nUna\n'));
+      await findNotice();
+      await user.click(screen.getByRole('button', { name: 'Cerrar el aviso' }));
+      expect(notices()).toEqual([]);
+    });
+
+    it('las tarjetas importadas se conservan al recargar', async () => {
+      const data: Record<string, string> = {};
+      const memory = {
+        getItem: (key: string) => data[key] ?? null,
+        setItem: (key: string, value: string) => {
+          data[key] = value;
+        },
+      };
+      const user = userEvent.setup();
+      const { unmount } = render(<App storage={memory} />);
+      await importFile(user, csvFile('titulo,columna\nViaje a Lisboa,Por hacer\nViaje a Oporto,Por hacer\n'));
+      await findNotice();
+      unmount();
+
+      render(<App storage={memory} />);
+      const porHacer = column('Por hacer');
+      expect(within(porHacer).getByRole('button', { name: 'Viaje a Lisboa' })).toBeInTheDocument();
+      expect(within(porHacer).getByRole('button', { name: 'Viaje a Oporto' })).toBeInTheDocument();
+    });
   });
 
   describe('modo oscuro', () => {
