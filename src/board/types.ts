@@ -31,6 +31,8 @@ export interface Card {
   description: string;
   /** Ids de etiquetas del tablero, en el orden en que se añadieron. */
   labelIds: string[];
+  /** Fecha límite 'AAAA-MM-DD' (solo día), o null si no tiene. Desde el esquema 2. */
+  dueDate: string | null;
 }
 
 export interface Column {
@@ -47,4 +49,14 @@ export interface Board {
   /** Tarjetas indexadas por id. Cada tarjeta está en exactamente una columna. */
   cards: Record<string, Card>;
   labels: Label[];
+}
+
+/**
+ * Formato 1 (clave clonello:v1), solo para leer y migrar tableros antiguos.
+ * Igual que el actual, pero las tarjetas no tenían fecha límite.
+ */
+export type CardV1 = Omit<Card, 'dueDate'>;
+
+export interface BoardV1 extends Omit<Board, 'cards'> {
+  cards: Record<string, CardV1>;
 }

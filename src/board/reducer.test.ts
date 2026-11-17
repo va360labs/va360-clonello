@@ -18,10 +18,10 @@ function makeBoard(): Board {
       { id: 'c-c', title: 'Hecho', cardIds: [] },
     ],
     cards: {
-      'k-1': { id: 'k-1', title: 'Uno', description: '', labelIds: ['l-1'] },
-      'k-2': { id: 'k-2', title: 'Dos', description: 'Detalle', labelIds: [] },
-      'k-3': { id: 'k-3', title: 'Tres', description: '', labelIds: [] },
-      'k-4': { id: 'k-4', title: 'Cuatro', description: '', labelIds: ['l-2'] },
+      'k-1': { id: 'k-1', title: 'Uno', description: '', labelIds: ['l-1'], dueDate: null },
+      'k-2': { id: 'k-2', title: 'Dos', description: 'Detalle', labelIds: [], dueDate: null },
+      'k-3': { id: 'k-3', title: 'Tres', description: '', labelIds: [], dueDate: null },
+      'k-4': { id: 'k-4', title: 'Cuatro', description: '', labelIds: ['l-2'], dueDate: null },
     },
   };
 }
@@ -85,7 +85,7 @@ describe('tarjetas', () => {
       title: ' Publicar ',
     });
     expect(cardIdsOf(next, 'c-c')).toEqual(['k-n']);
-    expect(next.cards['k-n']).toEqual({ id: 'k-n', title: 'Publicar', description: '', labelIds: [] });
+    expect(next.cards['k-n']).toEqual({ id: 'k-n', title: 'Publicar', description: '', labelIds: [], dueDate: null });
   });
 
   it('no crea tarjetas sin título, en columnas que no existen ni con id repetido', () => {
@@ -191,8 +191,8 @@ describe('importar tarjetas', () => {
     expect(cardIdsOf(next, 'c-a')).toEqual(['k-1', 'k-2', 'k-3', 'n-4']);
     expect(cardIdsOf(next, 'c-b')).toEqual(['k-4', 'n-1', 'n-3']);
     expect(cardIdsOf(next, 'c-c')).toEqual(['n-2']);
-    expect(next.cards['n-1']).toEqual({ id: 'n-1', title: 'Cinco', description: 'Con detalle', labelIds: [] });
-    expect(next.cards['n-2']).toEqual({ id: 'n-2', title: 'Seis', description: '', labelIds: [] });
+    expect(next.cards['n-1']).toEqual({ id: 'n-1', title: 'Cinco', description: 'Con detalle', labelIds: [], dueDate: null });
+    expect(next.cards['n-2']).toEqual({ id: 'n-2', title: 'Seis', description: '', labelIds: [], dueDate: null });
     expect(Object.keys(next.cards)).toHaveLength(8);
   });
 
@@ -285,6 +285,56 @@ describe('importar tarjetas', () => {
   });
 });
 
+describe('fecha límite', () => {
+  it('una tarjeta nueva nace sin fecha', () => {
+    const next = boardReducer(makeBoard(), { type: 'card/add', id: 'k-n', columnId: 'c-a', title: 'Nueva' });
+    expect(next.cards['k-n']?.dueDate).toBeNull();
+  });
+
+  it('las tarjetas importadas nacen sin fecha', () => {
+    const next = boardReducer(makeBoard(), {
+      type: 'cards/import',
+      defaultColumnId: 'c-a',
+      cards: [{ id: 'n-1', title: 'Importada', description: '', column: '' }],
+    });
+    expect(next.cards['n-1']?.dueDate).toBeNull();
+  });
+
+  it('poner fecha límite a una tarjeta', () => {
+    const board = makeBoard();
+    const next = boardReducer(board, { type: 'card/setDueDate', cardId: 'k-2', dueDate: '2026-11-20' });
+    expect(next.cards['k-2']).toEqual({ ...board.cards['k-2'], dueDate: '2026-11-20' });
+    for (const id of ['k-1', 'k-3', 'k-4']) expect(next.cards[id]).toBe(board.cards[id]);
+    expect(next.columns).toBe(board.columns);
+  });
+
+  it('cambiar la fecha límite', () => {
+    const board = boardReducer(makeBoard(), { type: 'card/setDueDate', cardId: 'k-2', dueDate: '2026-11-20' });
+    const next = boardReducer(board, { type: 'card/setDueDate', cardId: 'k-2', dueDate: '2026-12-01' });
+    expect(next.cards['k-2']?.dueDate).toBe('2026-12-01');
+  });
+
+  it('quitar la fecha límite', () => {
+    const board = boardReducer(makeBoard(), { type: 'card/setDueDate', cardId: 'k-2', dueDate: '2026-11-20' });
+    const next = boardReducer(board, { type: 'card/setDueDate', cardId: 'k-2', dueDate: '' });
+    expect(next.cards['k-2']?.dueDate).toBeNull();
+  });
+
+  it('fecha igual, tarjeta inexistente o fecha mal escrita no cambian nada', () => {
+    const board = boardReducer(makeBoard(), { type: 'card/setDueDate', cardId: 'k-2', dueDate: '2026-11-20' });
+    expect(boardReducer(board, { type: 'card/setDueDate', cardId: 'k-2', dueDate: '2026-11-20' })).toBe(board);
+    expect(boardReducer(board, { type: 'card/setDueDate', cardId: 'k-1', dueDate: '' })).toBe(board);
+    expect(boardReducer(board, { type: 'card/setDueDate', cardId: 'nada', dueDate: '2026-11-21' })).toBe(board);
+    expect(boardReducer(board, { type: 'card/setDueDate', cardId: 'k-2', dueDate: '2026-02-30' })).toBe(board);
+    expect(boardReducer(board, { type: 'card/setDueDate', cardId: 'k-2', dueDate: '20/11/2026' })).toBe(board);
+  });
+
+  it('el tablero con fecha pasa la validación del esquema', () => {
+    const next = boardReducer(makeBoard(), { type: 'card/setDueDate', cardId: 'k-2', dueDate: '2026-11-20' });
+    expect(validateStoredData({ version: SCHEMA_VERSION, board: next }).ok).toBe(true);
+  });
+});
+
 describe('pureza', () => {
   it('nunca muta el tablero de entrada', () => {
     const board = makeBoard();
@@ -293,6 +343,7 @@ describe('pureza', () => {
     boardReducer(board, { type: 'column/delete', columnId: 'c-a' });
     boardReducer(board, { type: 'card/toggleLabel', cardId: 'k-1', labelId: 'l-2' });
     boardReducer(board, { type: 'card/update', cardId: 'k-1', changes: { title: 'Otro' } });
+    boardReducer(board, { type: 'card/setDueDate', cardId: 'k-1', dueDate: '2026-11-20' });
     expect(board).toEqual(copy);
   });
 

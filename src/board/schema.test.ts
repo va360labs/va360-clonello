@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SCHEMA_VERSION, validateStoredData } from './schema';
+import { SCHEMA_VERSION, validateStoredData, validateStoredDataV1 } from './schema';
 import { createSeedBoard } from './seed';
 import type { Board } from './types';
 
@@ -15,7 +15,7 @@ function validBoard(): Board {
       { id: 'c-a', title: 'Por hacer', cardIds: ['k-1'] },
       { id: 'c-b', title: 'Hecho', cardIds: [] },
     ],
-    cards: { 'k-1': { id: 'k-1', title: 'Uno', description: '', labelIds: ['l-1'] } },
+    cards: { 'k-1': { id: 'k-1', title: 'Uno', description: '', labelIds: ['l-1'], dueDate: null } },
   };
 }
 
@@ -40,8 +40,12 @@ describe('validación del esquema', () => {
     expect(errorsOf({ version: SCHEMA_VERSION })).not.toEqual([]);
   });
 
+  it('la versión del esquema es la 2', () => {
+    expect(SCHEMA_VERSION).toBe(2);
+  });
+
   it('rechaza otra versión del esquema', () => {
-    expect(errorsOf(stored(validBoard(), 2))).toEqual([
+    expect(errorsOf(stored(validBoard(), 3))).toEqual([
       expect.stringContaining('versión'),
     ]);
   });
@@ -66,7 +70,7 @@ describe('validación del esquema', () => {
 
   it('detecta tarjetas huérfanas que no están en ninguna columna', () => {
     const board = validBoard();
-    board.cards['k-2'] = { id: 'k-2', title: 'Sola', description: '', labelIds: [] };
+    board.cards['k-2'] = { id: 'k-2', title: 'Sola', description: '', labelIds: [], dueDate: null };
     expect(errorsOf(stored(board)).join(' ')).toContain('k-2');
   });
 
@@ -86,5 +90,52 @@ describe('validación del esquema', () => {
     const errors = errorsOf(stored(board)).join(' ');
     expect(errors).toContain('c-a');
     expect(errors).toContain('otro');
+  });
+
+  it('acepta tarjetas con fecha válida o sin fecha', () => {
+    const board = validBoard();
+    board.cards['k-1']!.dueDate = '2026-11-20';
+    board.cards['k-2'] = { id: 'k-2', title: 'Sin fecha', description: '', labelIds: [], dueDate: null };
+    board.columns[1]!.cardIds.push('k-2');
+    expect(validateStoredData(stored(board)).ok).toBe(true);
+    board.cards['k-1']!.dueDate = '2028-02-29';
+    expect(validateStoredData(stored(board)).ok).toBe(true);
+  });
+
+  it('rechaza una fecha que no es AAAA-MM-DD o no existe (2026-02-30)', () => {
+    for (const bad of ['2026-02-30', '20/11/2026', '2026-11-20T10:00', '', 20261120]) {
+      const board = validBoard() as unknown as { cards: Record<string, { dueDate: unknown }> };
+      board.cards['k-1']!.dueDate = bad;
+      expect(errorsOf(stored(board))).toEqual([expect.stringMatching(/La tarjeta k-1 tiene una fecha límite no válida/)]);
+    }
+  });
+
+  it('rechaza una tarjeta sin el campo de fecha', () => {
+    const board = validBoard() as unknown as { cards: Record<string, { dueDate?: unknown }> };
+    delete board.cards['k-1']!.dueDate;
+    expect(errorsOf(stored(board)).join(' ')).toContain('fecha límite');
+  });
+
+  it('rechaza datos con versión 1 en el validador nuevo', () => {
+    const { dueDate: _, ...cardV1 } = validBoard().cards['k-1']!;
+    const v1 = { version: 1, board: { ...validBoard(), cards: { 'k-1': cardV1 } } };
+    expect(errorsOf(v1)).toEqual([expect.stringContaining('versión')]);
+    expect(validateStoredDataV1(v1).ok).toBe(true);
+  });
+});
+
+describe('validación del esquema 1 (para migrar)', () => {
+  it('acepta un tablero v1 y rechaza la versión 2', () => {
+    const { dueDate: _, ...cardV1 } = validBoard().cards['k-1']!;
+    const board = { ...validBoard(), cards: { 'k-1': cardV1 } };
+    expect(validateStoredDataV1({ version: 1, board }).ok).toBe(true);
+    expect(validateStoredDataV1({ version: 2, board }).ok).toBe(false);
+  });
+
+  it('sigue detectando incoherencias en v1', () => {
+    const board = validBoard();
+    board.columns[1]!.cardIds.push('fantasma');
+    const result = validateStoredDataV1({ version: 1, board });
+    expect(result.ok ? [] : result.errors.join(' ')).toContain('fantasma');
   });
 });

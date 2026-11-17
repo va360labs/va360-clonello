@@ -1,7 +1,8 @@
-import { LABEL_COLORS, type Board } from './types';
+import { isValidDueDate } from './dueDate';
+import { LABEL_COLORS, type Board, type BoardV1 } from './types';
 
 /** Versión del esquema guardado. Cambiarla exige migración (docs/memoria.md). */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /** Lo que se guarda en localStorage: el tablero dentro de un sobre con versión. */
 export interface StoredData {
@@ -9,7 +10,15 @@ export interface StoredData {
   board: Board;
 }
 
-export type ValidationResult = { ok: true; data: StoredData } | { ok: false; errors: string[] };
+/** Lo que guardaba la versión 1 (clave clonello:v1). Solo se lee para migrarlo. */
+export interface StoredDataV1 {
+  version: 1;
+  board: BoardV1;
+}
+
+type Result<T> = { ok: true; data: T } | { ok: false; errors: string[] };
+export type ValidationResult = Result<StoredData>;
+export type ValidationResultV1 = Result<StoredDataV1>;
 
 /**
  * Valida a mano (sin dependencias) que un valor leído de localStorage cumple el
@@ -17,9 +26,18 @@ export type ValidationResult = { ok: true; data: StoredData } | { ok: false; err
  * Los mensajes de error están en español porque pueden acabar en pantalla.
  */
 export function validateStoredData(data: unknown): ValidationResult {
+  return validate<StoredData>(data, SCHEMA_VERSION);
+}
+
+/** Validador del esquema 1, sin fecha límite. Solo para leer clonello:v1 antes de migrar. */
+export function validateStoredDataV1(data: unknown): ValidationResultV1 {
+  return validate<StoredDataV1>(data, 1);
+}
+
+function validate<T>(data: unknown, version: 1 | 2): Result<T> {
   if (!isObject(data)) return fail('Los datos guardados no son un objeto.');
-  if (data.version !== SCHEMA_VERSION) {
-    return fail(`La versión del esquema es ${String(data.version)} y se esperaba ${SCHEMA_VERSION}.`);
+  if (data.version !== version) {
+    return fail(`La versión del esquema es ${String(data.version)} y se esperaba ${version}.`);
   }
   if (!isObject(data.board)) return fail('Falta el tablero.');
 
@@ -61,6 +79,9 @@ export function validateStoredData(data: unknown): ValidationResult {
       cardIds.add(key);
       if (typeof card.title !== 'string') errors.push(`La tarjeta ${key} no tiene un título de texto.`);
       if (typeof card.description !== 'string') errors.push(`La tarjeta ${key} no tiene una descripción de texto.`);
+      if (version >= 2 && card.dueDate !== null && !isValidDueDate(card.dueDate)) {
+        errors.push(`La tarjeta ${key} tiene una fecha límite no válida: ${String(card.dueDate)}. Debe ser AAAA-MM-DD.`);
+      }
       if (!isStringArray(card.labelIds)) {
         errors.push(`Las etiquetas de la tarjeta ${key} no son una lista de ids.`);
       } else {
@@ -102,10 +123,10 @@ export function validateStoredData(data: unknown): ValidationResult {
   }
 
   if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, data: data as unknown as StoredData };
+  return { ok: true, data: data as unknown as T };
 }
 
-function fail(message: string): ValidationResult {
+function fail(message: string): { ok: false; errors: string[] } {
   return { ok: false, errors: [message] };
 }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createSeedBoard } from './seed';
+import { SCHEMA_VERSION, validateStoredData } from './schema';
 
 describe('datos de ejemplo', () => {
   it('traen 4 columnas y una docena de tarjetas', () => {
@@ -22,5 +23,13 @@ describe('datos de ejemplo', () => {
     const a = createSeedBoard();
     a.columns[0]!.title = 'Cambiado';
     expect(createSeedBoard().columns[0]!.title).not.toBe('Cambiado');
+  });
+});
+
+describe('datos de ejemplo con el esquema 2', () => {
+  it('son válidos y sus tarjetas nacen sin fecha', () => {
+    const board = createSeedBoard();
+    expect(validateStoredData({ version: SCHEMA_VERSION, board }).ok).toBe(true);
+    for (const card of Object.values(board.cards)) expect(card.dueDate).toBeNull();
   });
 });

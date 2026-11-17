@@ -1,4 +1,5 @@
 import { normalizeName } from './csv';
+import { isValidDueDate } from './dueDate';
 import type { Board, Card, Column, LabelColor } from './types';
 
 /**
@@ -17,6 +18,8 @@ export type BoardAction =
   /** toIndex es la posición en la columna de destino una vez retirada la tarjeta de su sitio. */
   | { type: 'card/move'; cardId: string; toColumnId: string; toIndex: number }
   | { type: 'card/toggleLabel'; cardId: string; labelId: string }
+  /** Pone o cambia la fecha límite ('AAAA-MM-DD'). Con '' la quita. */
+  | { type: 'card/setDueDate'; cardId: string; dueDate: string }
   | { type: 'label/add'; id: string; name: string; color: LabelColor }
   /**
    * Añade varias tarjetas de golpe (importar un CSV). `column` es el nombre de la
@@ -68,7 +71,7 @@ export function boardReducer(board: Board, action: BoardAction): Board {
       const title = action.title.trim();
       const column = board.columns.find((c) => c.id === action.columnId);
       if (!title || !column || board.cards[action.id]) return board;
-      const card: Card = { id: action.id, title, description: '', labelIds: [] };
+      const card: Card = { id: action.id, title, description: '', labelIds: [], dueDate: null };
       return {
         ...updateColumn(board, column.id, (c) => ({ ...c, cardIds: [...c.cardIds, card.id] })),
         cards: { ...board.cards, [card.id]: card },
@@ -136,6 +139,13 @@ export function boardReducer(board: Board, action: BoardAction): Board {
       return { ...board, cards: { ...board.cards, [card.id]: { ...card, labelIds } } };
     }
 
+    case 'card/setDueDate': {
+      const card = board.cards[action.cardId];
+      const dueDate = action.dueDate === '' ? null : action.dueDate;
+      if (!card || (dueDate !== null && !isValidDueDate(dueDate)) || card.dueDate === dueDate) return board;
+      return { ...board, cards: { ...board.cards, [card.id]: { ...card, dueDate } } };
+    }
+
     case 'label/add': {
       const name = action.name.trim();
       const taken = board.labels.some(
@@ -161,7 +171,13 @@ export function boardReducer(board: Board, action: BoardAction): Board {
         const title = imported.title.trim();
         if (!title) continue;
         const columnId = columnByName.get(normalizeName(imported.column)) ?? action.defaultColumnId;
-        cards[imported.id] = { id: imported.id, title, description: imported.description, labelIds: [] };
+        cards[imported.id] = {
+          id: imported.id,
+          title,
+          description: imported.description,
+          labelIds: [],
+          dueDate: null,
+        };
         added.set(columnId, [...(added.get(columnId) ?? []), imported.id]);
       }
       if (added.size === 0) return board;

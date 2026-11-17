@@ -10,6 +10,7 @@ const card = (id: string, title: string, description: string, labelIds: string[]
   title,
   description,
   labelIds,
+  dueDate: null,
 });
 
 const SEED: Board = {
