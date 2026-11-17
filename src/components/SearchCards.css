@@ -1,0 +1,69 @@
+/* Buscador junto al título del tablero. El dorado solo aparece en el foco (de .field). */
+.search {
+  display: grid;
+  gap: 0.3rem;
+  width: min(20rem, 100%);
+}
+
+.search__box {
+  position: relative;
+}
+
+.search__icon {
+  position: absolute;
+  top: 50%;
+  left: 0.7rem;
+  color: var(--text-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* Doble clase para ganar a .field sin depender del orden de los estilos. */
+.search .search__input {
+  padding-right: 2.4rem;
+  padding-left: 2.1rem;
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.search .search__input:focus {
+  border-color: var(--gold);
+}
+
+.search__input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Se usa el botón propio para borrar, igual en todos los navegadores. */
+.search__input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.search__clear {
+  position: absolute;
+  top: 50%;
+  right: 0.25rem;
+  transform: translateY(-50%);
+}
+
+.search__hint {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+/* Aviso «Ninguna tarjeta coincide»: informativo, sin dorado (no es interactivo). */
+.search__none {
+  margin: 0 var(--gutter) 1rem;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--fs-xs);
+}
+
+@media (max-width: 720px) {
+  .search {
+    width: 100%;
+  }
+}
