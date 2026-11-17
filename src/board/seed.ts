@@ -1,3 +1,4 @@
+import type { StoredData } from './schema';
 import type { Board, Card } from './types';
 
 /**
@@ -109,4 +110,12 @@ const SEED: Board = {
 /** Devuelve una copia nueva de los datos de ejemplo. */
 export function createSeedBoard(): Board {
   return structuredClone(SEED);
+}
+
+/** Id del tablero de ejemplo en la lista de tableros. */
+export const SEED_BOARD_ID = 'board-brisa';
+
+/** Datos de ejemplo en formato v2: el tablero de ejemplo, solo y abierto. */
+export function createSeedData(): StoredData {
+  return { version: 2, activeBoardId: SEED_BOARD_ID, boards: [{ id: SEED_BOARD_ID, ...createSeedBoard() }] };
 }

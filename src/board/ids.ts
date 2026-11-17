@@ -1,8 +1,8 @@
 /**
- * Genera ids cortos con prefijo legible: col-3f9a1c2b, card-…, label-…
+ * Genera ids cortos con prefijo legible: col-3f9a1c2b, card-…, label-…, board-…
  * El reducer no genera ids (sería impuro): llegan ya creados en la acción.
  */
-export function createId(prefix: 'col' | 'card' | 'label'): string {
+export function createId(prefix: 'board' | 'col' | 'card' | 'label'): string {
   const random =
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID().replace(/-/g, '').slice(0, 8)

@@ -4,6 +4,9 @@
  * Es el esquema que se guarda en localStorage (ver storage.ts). Cualquier cambio
  * aquí es un cambio de esquema: exige subir SCHEMA_VERSION, una clave nueva y una
  * migración desde la versión anterior. Ver docs/memoria.md.
+ *
+ * Desde la versión 2 hay varios tableros (Workspace). Board es el contenido de
+ * uno, igual que en la versión 1; BoardEntry le añade su id.
  */
 
 export const LABEL_COLORS = [
@@ -47,4 +50,17 @@ export interface Board {
   /** Tarjetas indexadas por id. Cada tarjeta está en exactamente una columna. */
   cards: Record<string, Card>;
   labels: Label[];
+}
+
+/** Un tablero de la lista, con su id. */
+export interface BoardEntry extends Board {
+  id: string;
+}
+
+/** Todos los tableros de quien usa la app y cuál tiene abierto. */
+export interface Workspace {
+  /** Id del tablero abierto. Siempre existe en boards. */
+  activeBoardId: string;
+  /** Nunca está vacía. El orden es el orden en el selector. */
+  boards: BoardEntry[];
 }
