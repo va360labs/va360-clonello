@@ -1,3 +1,4 @@
+import { isValidDueDate } from './dueDate';
 import type { Board, Card, Column, LabelColor } from './types';
 
 /**
@@ -16,6 +17,8 @@ export type BoardAction =
   /** toIndex es la posición en la columna de destino una vez retirada la tarjeta de su sitio. */
   | { type: 'card/move'; cardId: string; toColumnId: string; toIndex: number }
   | { type: 'card/toggleLabel'; cardId: string; labelId: string }
+  /** dueDate es un día «AAAA-MM-DD» o null para quitarla. */
+  | { type: 'card/setDueDate'; cardId: string; dueDate: string | null }
   | { type: 'label/add'; id: string; name: string; color: LabelColor }
   | { type: 'board/replace'; board: Board };
 
@@ -54,7 +57,7 @@ export function boardReducer(board: Board, action: BoardAction): Board {
       const title = action.title.trim();
       const column = board.columns.find((c) => c.id === action.columnId);
       if (!title || !column || board.cards[action.id]) return board;
-      const card: Card = { id: action.id, title, description: '', labelIds: [] };
+      const card: Card = { id: action.id, title, description: '', labelIds: [], dueDate: null };
       return {
         ...updateColumn(board, column.id, (c) => ({ ...c, cardIds: [...c.cardIds, card.id] })),
         cards: { ...board.cards, [card.id]: card },
@@ -120,6 +123,13 @@ export function boardReducer(board: Board, action: BoardAction): Board {
         ? card.labelIds.filter((id) => id !== action.labelId)
         : [...card.labelIds, action.labelId];
       return { ...board, cards: { ...board.cards, [card.id]: { ...card, labelIds } } };
+    }
+
+    case 'card/setDueDate': {
+      const card = board.cards[action.cardId];
+      if (!card || (action.dueDate !== null && !isValidDueDate(action.dueDate))) return board;
+      if (card.dueDate === action.dueDate) return board;
+      return { ...board, cards: { ...board.cards, [card.id]: { ...card, dueDate: action.dueDate } } };
     }
 
     case 'label/add': {

@@ -31,6 +31,8 @@ export interface Card {
   description: string;
   /** Ids de etiquetas del tablero, en el orden en que se añadieron. */
   labelIds: string[];
+  /** Fecha límite como día del calendario, «AAAA-MM-DD», o null si no tiene. Ver dueDate.ts. */
+  dueDate: string | null;
 }
 
 export interface Column {

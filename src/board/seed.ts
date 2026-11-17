@@ -10,6 +10,8 @@ const card = (id: string, title: string, description: string, labelIds: string[]
   title,
   description,
   labelIds,
+  // Sin fechas de ejemplo: unas fechas fijas acabarían todas vencidas (docs/memoria.md).
+  dueDate: null,
 });
 
 const SEED: Board = {

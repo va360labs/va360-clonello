@@ -58,6 +58,35 @@
   line-height: 1.45;
 }
 
+/* Fecha límite: discreta mientras no vence; vencida, con el rojo de peligro y la palabra «Vencida» */
+.card__due {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 0.35rem;
+  min-height: 1.5rem;
+  padding: 0 0.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 550;
+  line-height: 1;
+}
+
+.card__due svg {
+  flex: none;
+}
+
+.card__due--overdue {
+  background: var(--danger-tint);
+  color: var(--danger);
+}
+
+.card__due-flag {
+  font-weight: 650;
+}
+
 /* Hueco que deja la tarjeta mientras se arrastra */
 .card--placeholder {
   border: 1.5px dashed var(--line-strong);

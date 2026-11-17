@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { isValidDueDate } from './dueDate';
+import { validateStoredData } from './schema';
 import { createSeedBoard } from './seed';
 
 describe('datos de ejemplo', () => {
@@ -16,6 +18,16 @@ describe('datos de ejemplo', () => {
     for (const column of board.columns) expect(column.cardIds.length).toBeGreaterThan(0);
     const used = new Set(Object.values(board.cards).flatMap((c) => c.labelIds));
     expect(used.size).toBeGreaterThanOrEqual(5);
+  });
+
+  it('los datos de ejemplo pasan el validador v2', () => {
+    expect(validateStoredData({ version: 2, board: createSeedBoard() })).toMatchObject({ ok: true });
+  });
+
+  it('todas las tarjetas tienen fecha vacía o una fecha válida', () => {
+    for (const card of Object.values(createSeedBoard().cards)) {
+      expect(card.dueDate === null || isValidDueDate(card.dueDate)).toBe(true);
+    }
   });
 
   it('devuelven una copia nueva cada vez', () => {

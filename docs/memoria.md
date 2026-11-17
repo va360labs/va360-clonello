@@ -11,10 +11,11 @@ La app es estática y se publica en GitHub Pages. Cada visitante tiene su propio
 
 ## localStorage con esquema versionado
 
-- Clave `clonello:v1`. El valor es un sobre `{ "version": 1, "board": { … } }` (`src/board/storage.ts`).
+- Clave `clonello:v2` (desde el encargo #22). El valor es un sobre `{ "version": 2, "board": { … } }` (`src/board/storage.ts`).
+- `loadBoard()` lee primero `clonello:v2`. Si no existe, lee `clonello:v1`, la valida con `validateStoredDataV1()`, la migra con `migrateV1ToV2()` (`src/board/migrate.ts`), la valida con el validador v2 y la guarda en `clonello:v2`. La clave v1 no se borra.
 - `loadBoard()` valida lo leído con `validateStoredData()` (`src/board/schema.ts`). La validación es a mano, sin librerías, y comprueba también la coherencia entre columnas, tarjetas y etiquetas.
 - Primera visita o navegador sin `localStorage`: se siembran los datos de ejemplo (`src/board/seed.ts`).
-- Datos ilegibles (JSON roto o esquema inválido): se copian en `clonello:v1:respaldo`, se vuelve a sembrar y la app muestra un aviso.
+- Datos ilegibles (JSON roto o esquema inválido): se copian en `clonello:v2:respaldo` (o en `clonello:v1:respaldo` si lo ilegible era la v1), se vuelve a sembrar y la app muestra un aviso.
 - **Por qué versionado**: el día que cambie el modelo, los tableros guardados en navegadores de gente real no deben romperse ni perderse.
 - **Por qué sin zod**: el esquema es pequeño, así no hay dependencias y los mensajes salen en español.
 
@@ -31,13 +32,14 @@ La app es estática y se publica en GitHub Pages. Cada visitante tiene su propio
 ```
 Board { title, columns: Column[], cards: Record<id, Card>, labels: Label[] }
 Column { id, title, cardIds: string[] }
-Card { id, title, description, labelIds: string[] }
+Card { id, title, description, labelIds: string[], dueDate: string | null }
 Label { id, name, color }
 ```
 
 - El orden de `columns` es el orden en pantalla. El orden de `cardIds` es el orden dentro de la columna.
 - Las tarjetas viven en un índice por id. Mover una tarjeta solo cambia listas de ids.
 - Las etiquetas son del tablero y las tarjetas las referencian por id. Se pueden crear desde el detalle de una tarjeta; si algún día se renombran, el cambio llegará a todas las tarjetas a la vez.
+- `dueDate` es un día del calendario `AAAA-MM-DD`, o `null` si no hay fecha (ver «Fechas límite»).
 - Colores de etiqueta: una lista cerrada (`LABEL_COLORS`). No hay amarillo para no competir con el dorado.
 
 ## Reducer puro
@@ -47,6 +49,17 @@ Label { id, name, color }
 - Una acción sin sentido (id que no existe, título vacío, mover a la misma posición) devuelve **el mismo objeto**. Las pruebas lo comprueban con `toBe`.
 - `card/move` recibe `toIndex` como la posición final en la columna de destino una vez retirada la tarjeta de su sitio.
 - **Por qué**: se prueba sin navegador, en milisegundos, y cada encargo cabe en una acción nueva con sus pruebas.
+
+## Fechas límite
+
+- Solo el día, sin hora: `AAAA-MM-DD` (lo que da `<input type="date">`). Así no hay zonas horarias y se compara como texto.
+- **Vencida** = la fecha es anterior al día de hoy en la hora local del navegador. El mismo día del vencimiento todavía no está vencida. Sin fecha, nunca.
+- `src/board/dueDate.ts` tiene las funciones puras (`isValidDueDate`, `isOverdue(fecha, hoy)`, `formatDueDate`, `localDateOf`). «Hoy» siempre llega como parámetro: ni el reducer ni la validación leen el reloj; solo lo lee la interfaz al pintar la tarjeta.
+- Acción `card/setDueDate` con `dueDate: string | null`. Fecha inválida (`2026-13-45`, `mañana`), id que no existe o la misma fecha: devuelve el mismo objeto.
+- En la tarjeta: formato corto en español escrito a mano («1 dic», «15 sept», con año si no es el actual) para no depender del ICU del navegador. Vencida: texto «Vencida» además del color, con `--danger` sobre `--danger-tint` (sin dorado: no es interactivo).
+- El texto de la fecha es la descripción accesible de la tarjeta (`aria-describedby`), sumado a las instrucciones de arrastre de dnd-kit, porque el `aria-label` de la tarjeta tapa su contenido.
+- No hay «vence hoy» ni «vence pronto», y una tarjeta en «Hecho» también sale vencida: no existe una marca de columna terminada y deducirla del nombre sería frágil.
+- Los datos de ejemplo no traen fechas: unas fechas fijas acabarían todas vencidas y unas relativas obligarían a la siembra a leer el reloj.
 
 ## Arrastrar y soltar con @dnd-kit
 
@@ -112,7 +125,7 @@ Las preferencias de quien usa la app (por ejemplo, el tema claro u oscuro) **no 
 
 Una preferencia visual se aplica antes del primer pintado (un script corto en `index.html`), para que la página no destelle con el tema equivocado al cargar.
 
-- Excepción a «nadie fuera de `src/board/storage.ts` toca `localStorage`»: `src/preferencias/` y el script de `index.html` pueden leer y escribir **solo** la clave `clonello:preferencias`. Nunca tocan `clonello:v1`.
+- Excepción a «nadie fuera de `src/board/storage.ts` toca `localStorage`»: `src/preferencias/` y el script de `index.html` pueden leer y escribir **solo** la clave `clonello:preferencias`. Nunca tocan `clonello:v1` ni `clonello:v2`.
 - Formato: `{ "tema": "claro" | "oscuro" }`. Lo que no encaje (JSON roto, otro valor, sin `localStorage`) se ignora y se usa el tema por defecto. Si cambia el formato, hay que cambiar a la vez `src/preferencias/tema.ts` y el script de `index.html`.
 
 ### Modo oscuro
@@ -125,7 +138,7 @@ Una preferencia visual se aplica antes del primer pintado (un script corto en `i
 
 ## Lo que la app no hace todavía
 
-Se dejó fuera a propósito: fechas límite, búsqueda y filtros, exportar e importar, checklists, asignar personas, varios tableros, compartir y permisos, historial de actividad y deshacer.
+Se dejó fuera a propósito: búsqueda y filtros, exportar e importar, checklists, asignar personas, varios tableros, compartir y permisos, historial de actividad y deshacer.
 
 ## Registro de decisiones
 
@@ -136,3 +149,4 @@ Se dejó fuera a propósito: fechas límite, búsqueda y filtros, exportar e imp
 | 2026-11-17 | Preferencias de la interfaz fuera de los datos del tablero: módulo y clave propios, nunca en `storage.ts`, y aplicadas antes del primer pintado. Se decide al revisar la PR #5, que guardaba el tema en `storage.ts` y por eso pasaba a riesgo alto. |
 | 2026-11-17 | Encargo #6: modo oscuro. Botón en la cabecera, tokens oscuros en `tokens.css` bajo `data-tema="oscuro"`, preferencia en `src/preferencias/` con clave `clonello:preferencias` (excepción explícita a la regla de `localStorage`) y script en `index.html` para no destellar. Empieza siempre en claro y solo hay dos opciones. Colores sueltos pasados a tokens. Sin tocar `src/board/`. |
 | 2026-11-17 | Encargo #24: contador de tarjetas en la cabecera de cada columna. Sale de `column.cardIds.length`, sin tocar `src/board/`. Va fuera del `<h2>` para que el título y el nombre accesible de la columna sigan siendo solo su nombre (y renombrar no cambie). El número visible es `aria-hidden` y el lector de pantalla oye un texto oculto «N tarjetas» / «1 tarjeta». Píldora discreta con `--surface-sunken` y `--text-muted`, sin dorado porque no es interactiva. También se muestra en la columna que vuela al arrastrar, por coherencia (pregunta abierta de la ficha). |
+| 2026-11-17 | Encargo #22: fecha límite en las tarjetas. Esquema v2 con migración completa (no un campo opcional en v1): `clonello:v2`, `migrateV1ToV2` pone `dueDate: null` a todas las tarjetas sin tocar nada más, y `clonello:v1` se conserva como respaldo. Solo día (`AAAA-MM-DD`) para evitar zonas horarias; «vencida» es anterior a hoy en hora local, y el mismo día no lo está. Aviso con texto «Vencida» y tokens `--danger`/`--danger-tint`. Sin «vence pronto», sin excepción para «Hecho» y sin fechas en los datos de ejemplo. |
