@@ -22,6 +22,7 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { findColumnOfCard } from '../board/reducer';
+import { cardMatches, isActiveSearch } from '../board/search';
 import type { Board } from '../board/types';
 import { useBoard } from '../state/BoardProvider';
 import { AddColumnForm } from './AddColumnForm';
@@ -29,6 +30,7 @@ import { CardFace } from './CardTile';
 import { CardModal } from './CardModal';
 import { ColumnPreview, ColumnView } from './ColumnView';
 import { ImportCardsButton, ImportNotice, type ImportResult } from './ImportCards';
+import { SearchField, SearchStatus } from './SearchCards';
 import './BoardView.css';
 
 type DragKind = 'card' | 'column';
@@ -41,6 +43,9 @@ export function BoardView() {
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [active, setActive] = useState<{ id: string; kind: DragKind } | null>(null);
+  // Texto buscado: solo cambia lo que se ve, no se guarda en ningún sitio.
+  const [query, setQuery] = useState('');
+  const searching = isActiveSearch(query);
 
   // Tablero tal y como estaba al empezar a arrastrar: se restaura si se cancela.
   const snapshot = useRef<Board | null>(null);
@@ -168,6 +173,12 @@ export function BoardView() {
   const activeCard = active?.kind === 'card' ? board.cards[active.id] : undefined;
   const activeColumn = active?.kind === 'column' ? board.columns.find((c) => c.id === active.id) : undefined;
   const openCard = openCardId ? board.cards[openCardId] : undefined;
+  const matches = searching
+    ? board.columns.reduce(
+        (total, c) => total + c.cardIds.filter((id) => board.cards[id] && cardMatches(board.cards[id], query)).length,
+        0,
+      )
+    : 0;
 
   return (
     <section className="board" aria-labelledby="board-title">
@@ -177,7 +188,11 @@ export function BoardView() {
         </h1>
         <ImportCardsButton onResult={setImportResult} />
       </div>
+      <div className="board__tools">
+        <SearchField query={query} onChange={setQuery} searching={searching} />
+      </div>
       {importResult && <ImportNotice result={importResult} onClose={() => setImportResult(null)} />}
+      <SearchStatus searching={searching} matches={matches} />
 
       <DndContext
         sensors={sensors}
@@ -202,6 +217,7 @@ export function BoardView() {
                 column={column}
                 index={index}
                 total={board.columns.length}
+                query={query}
                 onOpenCard={setOpenCardId}
               />
             ))}
